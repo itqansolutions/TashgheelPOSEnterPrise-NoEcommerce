@@ -1,19 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const Tenant = require('../models/Tenant');
-const User = require('../models/User');
+const prisma = require('../prisma');
 
 // Hardcoded Super Admin Credentials (for V1)
 const SUPER_ADMIN_USER = 'tashgheel';
 const SUPER_ADMIN_PASS = 'BuFF@li2025#';
 
-// Middleware to check super admin session (simplified)
-// In a real app, use JWT or session
+// Middleware to check super admin session
 const checkSuperAdmin = (req, res, next) => {
-    // For simplicity, we'll just check a header or assume the frontend sends a "secret"
-    // Ideally, implement proper login.
-    // Let's use a simple header 'x-super-admin-secret'
     const secret = req.header('x-super-admin-secret');
     if (secret === 'super_secret_key_123') {
         next();
@@ -37,7 +32,9 @@ router.post('/login', (req, res) => {
 // @desc    Get all tenants
 router.get('/tenants', checkSuperAdmin, async (req, res) => {
     try {
-        const tenants = await Tenant.find().sort({ createdAt: -1 });
+        const tenants = await prisma.tenant.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
         res.json(tenants);
     } catch (err) {
         console.error(err.message);
@@ -46,16 +43,18 @@ router.get('/tenants', checkSuperAdmin, async (req, res) => {
 });
 
 // @route   PUT /api/super-admin/tenants/:id/status
-// @desc    Update tenant status (active, on_hold)
+// @desc    Update tenant status (active, on_hold, suspended)
 router.put('/tenants/:id/status', checkSuperAdmin, async (req, res) => {
     try {
         const { status } = req.body;
-        const tenant = await Tenant.findById(req.params.id);
+        const tenant = await prisma.tenant.findUnique({ where: { id: req.params.id } });
         if (!tenant) return res.status(404).json({ msg: 'Tenant not found' });
 
-        tenant.status = status;
-        await tenant.save();
-        res.json(tenant);
+        const updated = await prisma.tenant.update({
+            where: { id: req.params.id },
+            data: { status }
+        });
+        res.json(updated);
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');
@@ -66,22 +65,25 @@ router.put('/tenants/:id/status', checkSuperAdmin, async (req, res) => {
 // @desc    Extend/Renew subscription
 router.put('/tenants/:id/subscription', checkSuperAdmin, async (req, res) => {
     try {
-        const { months } = req.body; // Number of months to add
-        const tenant = await Tenant.findById(req.params.id);
+        const { months } = req.body;
+        const tenant = await prisma.tenant.findUnique({ where: { id: req.params.id } });
         if (!tenant) return res.status(404).json({ msg: 'Tenant not found' });
 
         let currentEnd = tenant.subscriptionEndsAt || new Date();
-        if (currentEnd < new Date()) currentEnd = new Date(); // If expired, start from now
+        if (currentEnd < new Date()) currentEnd = new Date();
 
         const newEnd = new Date(currentEnd);
         newEnd.setMonth(newEnd.getMonth() + parseInt(months));
 
-        tenant.subscriptionEndsAt = newEnd;
-        tenant.isSubscribed = true;
-        tenant.status = 'active'; // Auto-activate on renewal
-
-        await tenant.save();
-        res.json(tenant);
+        const updated = await prisma.tenant.update({
+            where: { id: req.params.id },
+            data: {
+                subscriptionEndsAt: newEnd,
+                isSubscribed: true,
+                status: 'active'
+            }
+        });
+        res.json(updated);
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');
@@ -89,29 +91,13 @@ router.put('/tenants/:id/subscription', checkSuperAdmin, async (req, res) => {
 });
 
 // @route   DELETE /api/super-admin/tenants/:id
-// @desc    Terminate tenant (Delete all data)
+// @desc    Terminate tenant (Delete all data via cascade)
 router.delete('/tenants/:id', checkSuperAdmin, async (req, res) => {
     try {
         const tenantId = req.params.id;
 
-        // Delete Tenant
-        await Tenant.findByIdAndDelete(tenantId);
-
-        // Delete Users
-        await User.deleteMany({ tenantId });
-
-        // Ideally delete Products, Sales, etc. too if we had models for them linked to tenantId
-        // Assuming we do (based on previous context), let's try to be thorough if possible, 
-        // but for now just Tenant and User is the core.
-        // If we have Product, Sale models, we should import and delete them too.
-        // Let's assume we do for completeness.
-        const Product = require('../models/Product');
-        const Sale = require('../models/Sale');
-        const Customer = require('../models/Customer');
-
-        await Product.deleteMany({ tenantId });
-        await Sale.deleteMany({ tenantId });
-        await Customer.deleteMany({ tenantId });
+        // All related records are deleted automatically via Cascade in Prisma schema
+        await prisma.tenant.delete({ where: { id: tenantId } });
 
         res.json({ msg: 'Tenant terminated successfully' });
     } catch (err) {
@@ -131,18 +117,21 @@ router.put('/tenants/:id/password', checkSuperAdmin, async (req, res) => {
             return res.status(400).json({ msg: 'Password must be at least 6 characters' });
         }
 
-        // Find the admin user for this tenant
-        // Assuming the first user created or role='admin' is the main admin.
-        // Let's find a user with role 'admin' for this tenant.
-        const user = await User.findOne({ tenantId, role: 'admin' });
+        const user = await prisma.user.findFirst({
+            where: { tenantId, role: 'admin' }
+        });
 
         if (!user) {
             return res.status(404).json({ msg: 'Admin user not found for this tenant' });
         }
 
         const salt = await bcrypt.genSalt(10);
-        user.passwordHash = await bcrypt.hash(newPassword, salt);
-        await user.save();
+        const passwordHash = await bcrypt.hash(newPassword, salt);
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { passwordHash }
+        });
 
         res.json({ msg: 'Password reset successfully' });
     } catch (err) {

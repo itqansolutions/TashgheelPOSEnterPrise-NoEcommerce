@@ -135,6 +135,32 @@
             </div>
             <button onclick="location.href='admin.html#ecommerce'" class="text-xs text-brand-blue font-semibold hover:underline">Configure Settings</button>
           </div>
+
+          <!-- Noon -->
+          <div class="bg-white rounded-2xl shadow-premium border border-gray-100 p-6 flex flex-col items-center text-center">
+            <div class="w-16 h-16 bg-yellow-50 text-yellow-600 rounded-2xl flex items-center justify-center text-3xl mb-4">
+              <i class="fas fa-truck"></i>
+            </div>
+            <h3 class="font-bold text-lg mb-1">Noon Egypt</h3>
+            <p id="noon-status" class="text-xs text-gray-500 mb-4 font-medium flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-gray-300"></span> Not Connected
+            </p>
+            <div class="w-full grid grid-cols-3 gap-1 text-center mb-4">
+               <div class="bg-gray-50 p-2 rounded-lg">
+                 <div id="noon-order-count" class="font-bold text-brand-dark">0</div>
+                 <div class="text-[10px] uppercase text-gray-400">Orders</div>
+               </div>
+               <div class="bg-gray-50 p-2 rounded-lg border-x border-gray-100">
+                 <div id="noon-product-count" class="font-bold text-brand-blue">0</div>
+                 <div class="text-[10px] uppercase text-gray-400">Products</div>
+               </div>
+               <div class="bg-gray-50 p-2 rounded-lg">
+                 <div id="noon-sync-time" class="font-bold text-brand-dark">-</div>
+                 <div class="text-[10px] uppercase text-gray-400">Last Sync</div>
+               </div>
+            </div>
+            <button onclick="location.href='admin.html#ecommerce'" class="text-xs text-brand-blue font-semibold hover:underline">Configure Settings</button>
+          </div>
         </div>
 
         <!-- Pending Orders List -->
@@ -150,6 +176,7 @@
                  <option value="woocommerce">WooCommerce</option>
                  <option value="jumia">Jumia</option>
                  <option value="amazon">Amazon</option>
+                 <option value="noon">Noon Egypt</option>
                </select>
             </div>
           </div>

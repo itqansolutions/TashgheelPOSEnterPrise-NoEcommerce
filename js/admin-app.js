@@ -107,6 +107,11 @@ async function loadEcommerceConfigs() {
             } else if (c.platform === 'amazon' && c.amazon) {
                 document.getElementById('amazon-seller-id').value = c.amazon.sellerId || '';
                 document.getElementById('amazon-client-id').value = c.amazon.clientId || '';
+            } else if (c.platform === 'noon' && c.noon) {
+                document.getElementById('noon-email').value = c.noon.email || '';
+                document.getElementById('noon-store-code').value = c.noon.storeCode || '';
+                document.getElementById('noon-business-id').value = c.noon.businessId || '';
+                // Password is never sent back to frontend for security
             }
         });
     } catch (e) { console.error(e); }
@@ -141,6 +146,20 @@ function setupEcommerceForms() {
             clientSecret: document.getElementById('amazon-client-secret').value,
             refreshToken: document.getElementById('amazon-refresh-token').value
         });
+    });
+
+    // Noon Egypt
+    document.getElementById('noon-config-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const password = document.getElementById('noon-password').value;
+        const payload = {
+            email: document.getElementById('noon-email').value,
+            storeCode: document.getElementById('noon-store-code').value,
+            businessId: document.getElementById('noon-business-id').value,
+        };
+        // Only include password if user typed something
+        if (password) payload.password = password;
+        savePlatform('noon', payload);
     });
 }
 

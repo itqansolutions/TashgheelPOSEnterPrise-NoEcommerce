@@ -1,10 +1,10 @@
-const mongoose = require('mongoose');
+const mongoose = require('../db');
 
 const onlineOrderSchema = new mongoose.Schema({
     tenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', required: true },
 
     // Source platform
-    platform: { type: String, enum: ['amazon', 'jumia', 'woocommerce'], required: true },
+    platform: { type: String, enum: ['amazon', 'jumia', 'woocommerce', 'noon'], required: true },
     platformOrderId: { type: String, required: true }, // External order ID
     platformOrderNumber: { type: String }, // Human-readable order number
 

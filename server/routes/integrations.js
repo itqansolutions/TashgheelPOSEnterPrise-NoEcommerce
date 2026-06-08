@@ -18,16 +18,11 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const EcommerceConfig = require('../models/EcommerceConfig');
-const OnlineOrder = require('../models/OnlineOrder');
-const Product = require('../models/Product');
-const Sale = require('../models/Sale');
-const Shift = require('../models/Shift');
-const Customer = require('../models/Customer');
-const LedgerTransaction = require('../models/LedgerTransaction');
+const prisma = require('../prisma');
 const WooCommerceConnector = require('../integrations/woocommerce');
 const JumiaConnector = require('../integrations/jumia');
 const AmazonConnector = require('../integrations/amazon');
+const NoonConnector = require('../integrations/noon');
 
 // ─────────────────────────────────────────────
 // HELPERS
@@ -38,22 +33,36 @@ function getConnector(platform, config) {
         case 'woocommerce': return new WooCommerceConnector(config.woocommerce || {});
         case 'jumia': return new JumiaConnector(config.jumia || {});
         case 'amazon': return new AmazonConnector(config.amazon || {});
+        case 'noon': return new NoonConnector(config.noon || {});
         default: throw new Error(`Unknown platform: ${platform}`);
     }
 }
 
 /** Strip sensitive fields from config before sending to frontend */
 function sanitizeConfig(config) {
-    const obj = config.toObject ? config.toObject() : { ...config };
+    const obj = { ...config };
     if (obj.woocommerce) {
-        delete obj.woocommerce.consumerKey;
-        delete obj.woocommerce.consumerSecret;
-        delete obj.woocommerce.webhookSecret;
+        const wc = { ...(obj.woocommerce || {}) };
+        delete wc.consumerKey;
+        delete wc.consumerSecret;
+        delete wc.webhookSecret;
+        obj.woocommerce = wc;
     }
-    if (obj.jumia) delete obj.jumia.apiKey;
+    if (obj.jumia) {
+        const j = { ...(obj.jumia || {}) };
+        delete j.apiKey;
+        obj.jumia = j;
+    }
     if (obj.amazon) {
-        delete obj.amazon.clientSecret;
-        delete obj.amazon.refreshToken;
+        const a = { ...(obj.amazon || {}) };
+        delete a.clientSecret;
+        delete a.refreshToken;
+        obj.amazon = a;
+    }
+    if (obj.noon) {
+        const n = { ...(obj.noon || {}) };
+        delete n.password;
+        obj.noon = n;
     }
     return obj;
 }
@@ -64,13 +73,14 @@ async function linkItemsToProducts(tenantId, items) {
     for (const item of items) {
         let product = null;
         if (item.sku) {
-            product = await Product.findOne({ tenantId, barcode: item.sku });
+            product = await prisma.product.findFirst({ where: { tenantId, barcode: item.sku } });
         }
-        if (!product) {
-            // Fallback: Try matching by Name if SKU fails
-            product = await Product.findOne({ tenantId, name: new RegExp(`^${item.name}$`, 'i') });
+        if (!product && item.name) {
+            product = await prisma.product.findFirst({
+                where: { tenantId, name: { equals: item.name, mode: 'insensitive' } }
+            });
         }
-        linked.push({ ...item, productId: product?._id || null });
+        linked.push({ ...item, productId: product?.id || null });
     }
     return linked;
 }
@@ -85,17 +95,22 @@ async function linkItemsToProducts(tenantId, items) {
  */
 router.get('/', auth, async (req, res) => {
     try {
-        let configs = await EcommerceConfig.find({ tenantId: req.tenantId });
-        
-        // Bootstrap missing platforms if needed
-        const platforms = ['woocommerce', 'jumia', 'amazon'];
+        let configs = await prisma.ecommerceConfig.findMany({
+            where: { tenantId: req.tenantId }
+        });
+
+        // Bootstrap missing platforms
+        const platforms = ['woocommerce', 'jumia', 'amazon', 'noon'];
         const existingPlatforms = configs.map(c => c.platform);
         const missing = platforms.filter(p => !existingPlatforms.includes(p));
-        
+
         if (missing.length > 0) {
-            const newConfigs = missing.map(p => ({ tenantId: req.tenantId, platform: p }));
-            await EcommerceConfig.insertMany(newConfigs);
-            configs = await EcommerceConfig.find({ tenantId: req.tenantId });
+            await prisma.ecommerceConfig.createMany({
+                data: missing.map(p => ({ tenantId: req.tenantId, platform: p }))
+            });
+            configs = await prisma.ecommerceConfig.findMany({
+                where: { tenantId: req.tenantId }
+            });
         }
 
         res.json(configs.map(sanitizeConfig));
@@ -107,12 +122,13 @@ router.get('/', auth, async (req, res) => {
 
 /**
  * GET /api/integrations/:platform
- * Get single platform config (no secrets)
  */
 router.get('/:platform', auth, async (req, res) => {
     try {
         const { platform } = req.params;
-        const config = await EcommerceConfig.findOne({ tenantId: req.tenantId, platform });
+        const config = await prisma.ecommerceConfig.findFirst({
+            where: { tenantId: req.tenantId, platform }
+        });
         if (!config) return res.json({ platform, enabled: false });
         res.json(sanitizeConfig(config));
     } catch (err) {
@@ -123,41 +139,36 @@ router.get('/:platform', auth, async (req, res) => {
 
 /**
  * POST /api/integrations/:platform/connect
- * Save credentials and test connection
- * Body for woocommerce: { siteUrl, consumerKey, consumerSecret, syncSettings }
- * Body for jumia:       { apiKey, userId, syncSettings }
- * Body for amazon:      { sellerId, clientId, clientSecret, refreshToken, syncSettings }
  */
 router.post('/:platform/connect', auth, async (req, res) => {
     try {
         const { platform } = req.params;
         const { syncSettings, ...credentials } = req.body;
 
-        // Find or create config
-        let config = await EcommerceConfig.findOne({ tenantId: req.tenantId, platform });
-        if (!config) {
-            config = new EcommerceConfig({ tenantId: req.tenantId, platform });
-        }
+        let config = await prisma.ecommerceConfig.findFirst({
+            where: { tenantId: req.tenantId, platform }
+        });
 
-        // Update credentials
+        // Build updated credential object
+        let credentialData = {};
+
         if (platform === 'woocommerce') {
-            // Only update if not masked
-            if (credentials.consumerKey && credentials.consumerKey !== '********') {
-                config.woocommerce.consumerKey = credentials.consumerKey;
-            }
-            if (credentials.consumerSecret && credentials.consumerSecret !== '********') {
-                config.woocommerce.consumerSecret = credentials.consumerSecret;
-            }
-            config.woocommerce.siteUrl = credentials.siteUrl || config.woocommerce.siteUrl;
-            config.woocommerce.webhookSecret = credentials.webhookSecret || config.woocommerce.webhookSecret;
+            const existing = (config && config.woocommerce) ? config.woocommerce : {};
+            credentialData.woocommerce = {
+                ...existing,
+                siteUrl: credentials.siteUrl || existing.siteUrl,
+                webhookSecret: credentials.webhookSecret || existing.webhookSecret,
+                ...(credentials.consumerKey && credentials.consumerKey !== '********' && { consumerKey: credentials.consumerKey }),
+                ...(credentials.consumerSecret && credentials.consumerSecret !== '********' && { consumerSecret: credentials.consumerSecret })
+            };
         } else if (platform === 'jumia') {
-            config.jumia = {
+            credentialData.jumia = {
                 apiKey: credentials.apiKey,
                 userId: credentials.userId,
                 apiUrl: credentials.apiUrl || 'https://sellercenter.jumia.com.eg'
             };
         } else if (platform === 'amazon') {
-            config.amazon = {
+            credentialData.amazon = {
                 sellerId: credentials.sellerId,
                 marketplaceId: credentials.marketplaceId || 'A1I7FNSA0GEFN2',
                 clientId: credentials.clientId,
@@ -165,28 +176,50 @@ router.post('/:platform/connect', auth, async (req, res) => {
                 refreshToken: credentials.refreshToken,
                 region: credentials.region || 'eu-west-1'
             };
+        } else if (platform === 'noon') {
+            const existing = (config && config.noon) ? config.noon : {};
+            credentialData.noon = {
+                ...existing,
+                ...(credentials.email && { email: credentials.email }),
+                ...(credentials.password && credentials.password !== '********' && { password: credentials.password }),
+                ...(credentials.storeCode && { storeCode: credentials.storeCode }),
+                ...(credentials.businessId && { businessId: credentials.businessId }),
+                apiUrl: credentials.apiUrl || 'https://api.noon.partners/v2'
+            };
         } else {
             return res.status(400).json({ msg: 'Invalid platform' });
         }
 
-        if (syncSettings) {
-            config.syncSettings = { ...config.syncSettings, ...syncSettings };
+        if (syncSettings && config) {
+            credentialData.syncSettings = { ...(config.syncSettings || {}), ...syncSettings };
+        } else if (syncSettings) {
+            credentialData.syncSettings = syncSettings;
         }
 
-        // Test connection
-        const connector = getConnector(platform, config);
+        // Test connection (use merged config)
+        const mergedConfig = { ...(config || {}), ...credentialData };
+        const connector = getConnector(platform, mergedConfig);
         const testResult = await connector.testConnection();
 
-        config.enabled = true;
-        config.lastSyncStatus = 'success';
-        config.updatedAt = new Date();
-        await config.save();
+        // Upsert config
+        if (config) {
+            config = await prisma.ecommerceConfig.update({
+                where: { id: config.id },
+                data: { ...credentialData, enabled: true, lastSyncStatus: 'success', updatedAt: new Date() }
+            });
+        } else {
+            config = await prisma.ecommerceConfig.create({
+                data: {
+                    tenantId: req.tenantId,
+                    platform,
+                    enabled: true,
+                    lastSyncStatus: 'success',
+                    ...credentialData
+                }
+            });
+        }
 
-        res.json({
-            msg: 'Connected successfully',
-            testResult,
-            config: sanitizeConfig(config)
-        });
+        res.json({ msg: 'Connected successfully', testResult, config: sanitizeConfig(config) });
     } catch (err) {
         console.error(`[integrations] POST /${req.params.platform}/connect`, err.message);
         res.status(400).json({ msg: `Connection failed: ${err.message}` });
@@ -195,11 +228,12 @@ router.post('/:platform/connect', auth, async (req, res) => {
 
 /**
  * DELETE /api/integrations/:platform
- * Disconnect / remove platform
  */
 router.delete('/:platform', auth, async (req, res) => {
     try {
-        await EcommerceConfig.deleteOne({ tenantId: req.tenantId, platform: req.params.platform });
+        await prisma.ecommerceConfig.deleteMany({
+            where: { tenantId: req.tenantId, platform: req.params.platform }
+        });
         res.json({ msg: `${req.params.platform} disconnected` });
     } catch (err) {
         console.error('[integrations] DELETE /:platform', err.message);
@@ -213,22 +247,25 @@ router.delete('/:platform', auth, async (req, res) => {
 
 /**
  * POST /api/integrations/:platform/sync
- * Manual sync: pull new orders from platform + push products
  */
 router.post('/:platform/sync', auth, async (req, res) => {
     const { platform } = req.params;
     try {
-        const config = await EcommerceConfig.findOne({ tenantId: req.tenantId, platform });
+        const config = await prisma.ecommerceConfig.findFirst({
+            where: { tenantId: req.tenantId, platform }
+        });
         if (!config || !config.enabled) {
             return res.status(400).json({ msg: `${platform} is not connected` });
         }
 
         const connector = getConnector(platform, config);
-        
-        // Mark as syncing in DB
-        await EcommerceConfig.updateOne({ _id: config._id }, { lastSyncStatus: 'syncing' });
-        
-        // Start background sync
+
+        await prisma.ecommerceConfig.update({
+            where: { id: config.id },
+            data: { lastSyncStatus: 'syncing' }
+        });
+
+        // Start background sync (non-blocking)
         syncBackgroundTask(req.tenantId, platform, config, connector);
 
         res.json({ msg: 'Synchronization started in background.' });
@@ -238,24 +275,21 @@ router.post('/:platform/sync', auth, async (req, res) => {
     }
 });
 
-/** 
- * Background Sync Implementation 
- * Handles Pull Orders, Pull Products, and Push Products without blocking the request
+/**
+ * Background Sync Implementation
  */
 async function syncBackgroundTask(tenantId, platform, config, connector) {
-    const Product = require('../models/Product');
-    const Category = require('../models/Category');
-    const AuditLog = require('../models/AuditLog');
-    const OnlineOrder = require('../models/OnlineOrder');
-
     const results = { ordersImported: 0, productsImported: 0, productsPushed: 0, errors: [] };
-    
+
     const updateProgress = async (status, error = null) => {
         try {
-            await EcommerceConfig.updateOne({ _id: config._id }, { 
-                lastSyncStatus: status, 
-                lastSyncError: error || results.errors[0] || '',
-                updatedAt: new Date()
+            await prisma.ecommerceConfig.update({
+                where: { id: config.id },
+                data: {
+                    lastSyncStatus: status,
+                    lastSyncError: error || results.errors[0] || '',
+                    updatedAt: new Date()
+                }
             });
         } catch (e) { console.error('Progress update failed', e); }
     };
@@ -265,57 +299,55 @@ async function syncBackgroundTask(tenantId, platform, config, connector) {
         console.log(`[sync] Starting background sync for tenant ${tenantId} on ${platform}`);
 
         // === PULL ORDERS ===
-        if (config.syncSettings?.pullOrders !== false) {
-            await updateProgress('syncing', 'Pulling orders from WooCommerce...');
+        const syncSettings = config.syncSettings || {};
+        if (syncSettings.pullOrders !== false) {
+            await updateProgress('syncing', 'Pulling orders...');
             try {
                 let rawOrders = [];
                 const after = config.lastSyncAt || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-                if (platform === 'woocommerce') {
-                    rawOrders = await connector.getOrders(after);
-                } else if (platform === 'jumia') {
+                if (platform === 'woocommerce') rawOrders = await connector.getOrders(after);
+                else if (platform === 'jumia') {
                     const response = await connector.getOrders('pending', config.lastSyncAt);
                     rawOrders = response?.SuccessResponse?.Body?.Orders?.Order || [];
                     if (!Array.isArray(rawOrders)) rawOrders = rawOrders ? [rawOrders] : [];
-                } else if (platform === 'amazon') {
+                } else if (platform === 'amazon') rawOrders = await connector.getOrders(config.lastSyncAt);
+                else if (platform === 'noon') {
                     rawOrders = await connector.getOrders(config.lastSyncAt);
+                    if (!Array.isArray(rawOrders)) rawOrders = rawOrders ? [rawOrders] : [];
                 }
 
                 for (const rawOrder of rawOrders) {
                     try {
-                        let normalized;
-                        let items = [];
+                        let normalized, items = [];
 
-                        if (platform === 'woocommerce') {
-                            normalized = WooCommerceConnector.normalizeOrder(rawOrder);
-                        } else if (platform === 'jumia') {
-                            // Fetch items for this Jumia order
+                        if (platform === 'woocommerce') normalized = WooCommerceConnector.normalizeOrder(rawOrder);
+                        else if (platform === 'jumia') {
                             try {
                                 const itemsResp = await connector.getOrderItems(rawOrder.OrderId);
                                 items = itemsResp?.SuccessResponse?.Body?.OrderItems?.OrderItem || [];
                                 if (!Array.isArray(items)) items = items ? [items] : [];
-                            } catch (e) { /* ignore item fetch errors */ }
+                            } catch (e) {}
                             normalized = JumiaConnector.normalizeOrder(rawOrder, items);
                         } else if (platform === 'amazon') {
-                            // Fetch items for Amazon order
-                            try {
-                                items = await connector.getOrderItems(rawOrder.AmazonOrderId);
-                            } catch (e) { /* ignore */ }
+                            try { items = await connector.getOrderItems(rawOrder.AmazonOrderId); } catch (e) {}
                             normalized = AmazonConnector.normalizeOrder(rawOrder, items);
+                        } else if (platform === 'noon') {
+                            try {
+                                const noonId = rawOrder.orderNumber || rawOrder.id;
+                                items = await connector.getOrderItems(noonId);
+                            } catch (e) {}
+                            normalized = NoonConnector.normalizeOrder(rawOrder, items);
                         }
 
-                        // Link items to POS products
                         normalized.items = await linkItemsToProducts(tenantId, normalized.items);
 
-                        // Upsert: avoid duplicate imports
-                        const existing = await OnlineOrder.findOne({
-                            tenantId: tenantId,
-                            platform,
-                            platformOrderId: normalized.platformOrderId
+                        const existing = await prisma.onlineOrder.findFirst({
+                            where: { tenantId, platform, platformOrderId: normalized.platformOrderId }
                         });
 
                         if (!existing) {
-                            await OnlineOrder.create({ tenantId: tenantId, ...normalized });
+                            await prisma.onlineOrder.create({ data: { tenantId, ...normalized } });
                             results.ordersImported++;
                         }
                     } catch (e) {
@@ -326,95 +358,68 @@ async function syncBackgroundTask(tenantId, platform, config, connector) {
                 results.errors.push(`Pull orders error: ${e.message}`);
             }
         }
-        await updateProgress('syncing', `Imported ${results.ordersImported} orders.`);
 
         // === PULL PRODUCTS (WooCommerce to POS) ===
-        if (config.syncSettings?.pullProducts !== false && platform === 'woocommerce') {
-            await updateProgress('syncing', 'Fetching product list from WooCommerce...');
+        if (syncSettings.pullProducts !== false && platform === 'woocommerce') {
+            await updateProgress('syncing', 'Fetching products from WooCommerce...');
             try {
-                let page = 1;
-                let hasMore = true;
-                
+                let page = 1, hasMore = true;
                 while (hasMore) {
-                    await updateProgress('syncing', `Pulling products page ${page}...`);
                     const wcProducts = await connector.getProducts(page);
-                    if (!wcProducts || wcProducts.length === 0) {
-                        hasMore = false;
-                        break;
-                    }
+                    if (!wcProducts || wcProducts.length === 0) { hasMore = false; break; }
 
-                    // Add count log
-                    try {
-                        const AuditLog = require('../models/AuditLog');
-                        await AuditLog.create({
-                            tenantId: tenantId,
+                    await prisma.auditLog.create({
+                        data: {
+                            tenantId,
                             user: 'System (Sync)',
                             action: 'WooCommerce Data Received',
-                            details: `Page ${page}: Received ${wcProducts.length} products from WooCommerce API`,
+                            details: `Page ${page}: Received ${wcProducts.length} products`,
                             timestamp: new Date()
-                        });
-                    } catch (e) {}
+                        }
+                    });
 
                     for (const wcP of wcProducts) {
                         try {
                             const sku = String(wcP.sku || wcP.id);
-                            const existingProduct = await Product.findOne({ tenantId: tenantId, barcode: sku });
-                            
+                            const existingProduct = await prisma.product.findFirst({ where: { tenantId, barcode: sku } });
                             const sellingPrice = wcP.on_sale && wcP.sale_price ? parseFloat(wcP.sale_price) : (parseFloat(wcP.regular_price) || 0);
                             const regPrice = parseFloat(wcP.regular_price) || 0;
                             const imageUrl = wcP.images?.[0]?.src || '';
                             const stockCount = parseInt(wcP.stock_quantity) || 0;
 
                             if (existingProduct) {
-                                existingProduct.price = sellingPrice;
-                                existingProduct.priceOnline = regPrice;
-                                existingProduct.imageUrl = imageUrl || existingProduct.imageUrl;
-                                existingProduct.stock = stockCount;
-                                existingProduct.active = true;
-                                if (config.defaultBranchId) existingProduct.branchId = config.defaultBranchId;
-                                
-                                await existingProduct.save();
-                                results.productsImported++;
+                                await prisma.product.update({
+                                    where: { id: existingProduct.id },
+                                    data: { price: sellingPrice, priceOnline: regPrice, imageUrl: imageUrl || existingProduct.imageUrl, stock: stockCount, active: true }
+                                });
                             } else {
                                 const catName = wcP.categories?.[0]?.name || 'Uncategorized';
-                                let category = await Category.findOne({ tenantId: tenantId, name: catName });
-                                if (!category) category = await Category.create({ tenantId: tenantId, name: catName });
+                                let category = await prisma.category.findFirst({ where: { tenantId, name: catName } });
+                                if (!category) category = await prisma.category.create({ data: { tenantId, name: catName } });
 
-                                await Product.create({
-                                    tenantId, name: wcP.name, nameEn: wcP.name, barcode: sku,
-                                    price: sellingPrice, priceOnline: regPrice, stock: stockCount,
-                                    category: catName, categoryEn: catName, imageUrl, active: true,
-                                    trackStock: wcP.manage_stock, onlineActive: true,
-                                    branchId: config.defaultBranchId || null
+                                await prisma.product.create({
+                                    data: { tenantId, name: wcP.name, nameEn: wcP.name, barcode: sku, price: sellingPrice, priceOnline: regPrice, stock: stockCount, category: catName, categoryEn: catName, imageUrl, active: true, trackStock: wcP.manage_stock, onlineActive: true }
                                 });
-                                results.productsImported++;
                             }
-
-                            try {
-                                await AuditLog.create({
-                                    tenantId, user: 'System (Sync)', action: 'Product Synced',
-                                    details: `Synced "${wcP.name}" (${sku})`, timestamp: new Date()
-                                });
-                            } catch (e) {}
+                            results.productsImported++;
                         } catch (e) {
                             results.errors.push(`Product pull error for "${wcP.name}": ${e.message}`);
                         }
                     }
                     page++;
-                    if (page > 20) hasMore = false; // Safety limit (2000 products)
+                    if (page > 20) hasMore = false;
                 }
             } catch (e) {
                 results.errors.push(`Pull products error: ${e.message}`);
             }
         }
-        await updateProgress('syncing', `Imported ${results.productsImported} products.`);
 
         // === PUSH PRODUCTS (POS to WooCommerce) ===
-        if (config.syncSettings?.pushProducts !== false && platform === 'woocommerce') {
-            await updateProgress('syncing', 'Pushing local products to WooCommerce...');
+        if (syncSettings.pushProducts !== false && platform === 'woocommerce') {
+            await updateProgress('syncing', 'Pushing products to WooCommerce...');
             try {
-                const products = await Product.find({ tenantId: tenantId, active: true });
-                for (const product of products.slice(0, 50)) { // Limit batch size
+                const products = await prisma.product.findMany({ where: { tenantId, active: true } });
+                for (const product of products.slice(0, 50)) {
                     try {
                         await connector.pushProduct(product);
                         results.productsPushed++;
@@ -428,23 +433,26 @@ async function syncBackgroundTask(tenantId, platform, config, connector) {
         }
 
         // Update config stats
-        const finalConfig = await EcommerceConfig.findOne({ _id: config._id });
-        finalConfig.lastSyncAt = new Date();
-        finalConfig.lastSyncStatus = results.errors.length === 0 ? 'success' : 'error';
-        if (results.errors.length) finalConfig.lastSyncError = results.errors[0];
-        finalConfig.ordersImported = (finalConfig.ordersImported || 0) + results.ordersImported;
-        finalConfig.productsImported = (finalConfig.productsImported || 0) + (results.productsImported || 0);
-        finalConfig.productsPushed = (finalConfig.productsPushed || 0) + results.productsPushed;
-        finalConfig.updatedAt = new Date();
-        await finalConfig.save();
+        await prisma.ecommerceConfig.update({
+            where: { id: config.id },
+            data: {
+                lastSyncAt: new Date(),
+                lastSyncStatus: results.errors.length === 0 ? 'success' : 'error',
+                lastSyncError: results.errors.length ? results.errors[0] : null,
+                ordersImported: { increment: results.ordersImported },
+                productsImported: { increment: results.productsImported },
+                productsPushed: { increment: results.productsPushed },
+                updatedAt: new Date()
+            }
+        });
         console.log(`[sync] Background sync finished for tenant ${tenantId}`);
     } catch (err) {
         console.error(`[sync] Background sync fatal error:`, err.message);
         try {
-           await EcommerceConfig.updateOne({ _id: config._id }, { 
-               lastSyncStatus: 'error', 
-               lastSyncError: `Fatal background error: ${err.message}` 
-           });
+            await prisma.ecommerceConfig.update({
+                where: { id: config.id },
+                data: { lastSyncStatus: 'error', lastSyncError: `Fatal: ${err.message}` }
+            });
         } catch (e) {}
     }
 }
@@ -453,16 +461,13 @@ async function syncBackgroundTask(tenantId, platform, config, connector) {
 // PENDING ORDERS ROUTES
 // ─────────────────────────────────────────────
 
-/**
- * GET /api/integrations/orders/pending
- * Get all pending online orders (shown in POS Pending Orders tab)
- */
 router.get('/orders/pending', auth, async (req, res) => {
     try {
-        const orders = await OnlineOrder.find({
-            tenantId: req.tenantId,
-            status: 'pending'
-        }).sort({ createdAt: -1 }).limit(100);
+        const orders = await prisma.onlineOrder.findMany({
+            where: { tenantId: req.tenantId, status: 'pending' },
+            orderBy: { createdAt: 'desc' },
+            take: 100
+        });
         res.json(orders);
     } catch (err) {
         console.error('[integrations] GET /orders/pending', err.message);
@@ -470,20 +475,18 @@ router.get('/orders/pending', auth, async (req, res) => {
     }
 });
 
-/**
- * GET /api/integrations/orders
- * Get all online orders with filters
- */
 router.get('/orders', auth, async (req, res) => {
     try {
         const { status, platform, limit = 50 } = req.query;
-        const filter = { tenantId: req.tenantId };
-        if (status) filter.status = status;
-        if (platform) filter.platform = platform;
+        const where = { tenantId: req.tenantId };
+        if (status) where.status = status;
+        if (platform) where.platform = platform;
 
-        const orders = await OnlineOrder.find(filter)
-            .sort({ createdAt: -1 })
-            .limit(parseInt(limit));
+        const orders = await prisma.onlineOrder.findMany({
+            where,
+            orderBy: { createdAt: 'desc' },
+            take: parseInt(limit)
+        });
         res.json(orders);
     } catch (err) {
         console.error('[integrations] GET /orders', err.message);
@@ -491,12 +494,11 @@ router.get('/orders', auth, async (req, res) => {
     }
 });
 
-/**
- * GET /api/integrations/orders/:id
- */
 router.get('/orders/:id', auth, async (req, res) => {
     try {
-        const order = await OnlineOrder.findOne({ _id: req.params.id, tenantId: req.tenantId });
+        const order = await prisma.onlineOrder.findFirst({
+            where: { id: req.params.id, tenantId: req.tenantId }
+        });
         if (!order) return res.status(404).json({ msg: 'Order not found' });
         res.json(order);
     } catch (err) {
@@ -506,103 +508,108 @@ router.get('/orders/:id', auth, async (req, res) => {
 
 /**
  * POST /api/integrations/orders/:id/accept
- * Accept a pending online order → creates a POS Sale record
- * Body: { paymentMethod: 'cash'|'card'|'mobile'|'cod' }
  */
 router.post('/orders/:id/accept', auth, async (req, res) => {
     try {
-        const order = await OnlineOrder.findOne({ _id: req.params.id, tenantId: req.tenantId, status: 'pending' });
+        const order = await prisma.onlineOrder.findFirst({
+            where: { id: req.params.id, tenantId: req.tenantId, status: 'pending' }
+        });
         if (!order) return res.status(404).json({ msg: 'Pending order not found' });
 
         const paymentMethod = req.body.paymentMethod || 'cash';
 
-        // Find active shift
-        const shift = await Shift.findOne({
-            tenantId: req.tenantId,
-            cashier: req.user.username,
-            status: 'open'
+        const shift = await prisma.shift.findFirst({
+            where: { tenantId: req.tenantId, cashier: req.user.username, status: 'open' }
         });
-
         if (!shift) {
             return res.status(400).json({ msg: 'No open shift. Please open a shift before accepting orders.' });
         }
 
-        // Build sale items (deduct stock)
+        const orderItems = Array.isArray(order.items) ? order.items : [];
         const saleItems = [];
-        for (const item of order.items) {
-            const saleItem = {
-                code: item.sku || (item.productId?.toString() || ''),
+
+        for (const item of orderItems) {
+            saleItems.push({
+                code: item.sku || (item.productId || ''),
                 name: item.name,
                 qty: item.qty,
                 price: item.price,
                 productId: item.productId,
                 discount: { type: 'none', value: 0 }
-            };
-            saleItems.push(saleItem);
+            });
 
             // Deduct stock
             if (item.productId) {
-                const product = await Product.findOne({ _id: item.productId, tenantId: req.tenantId });
+                const product = await prisma.product.findFirst({
+                    where: { id: item.productId, tenantId: req.tenantId }
+                });
                 if (product && product.trackStock !== false) {
-                    product.stock = Math.max(0, product.stock - item.qty);
-
-                    if (!product.stores) product.stores = [];
-                    let storeStock = product.stores.find(s => s.storeId?.toString() === shift.storeId?.toString());
-                    if (storeStock) {
-                        storeStock.stock = Math.max(0, storeStock.stock - item.qty);
+                    const stores = Array.isArray(product.stores) ? product.stores : [];
+                    const storeIdx = stores.findIndex(s => s.storeId === shift.storeId);
+                    if (storeIdx >= 0) {
+                        stores[storeIdx].stock = Math.max(0, (stores[storeIdx].stock || 0) - item.qty);
                     } else {
-                        product.stores.push({ storeId: shift.storeId, stock: -item.qty });
+                        stores.push({ storeId: shift.storeId, stock: -item.qty });
                     }
-                    await product.save();
+                    await prisma.product.update({
+                        where: { id: product.id },
+                        data: { stock: Math.max(0, product.stock - item.qty), stores }
+                    });
                 }
             }
         }
 
-        // Generate receipt ID
-        const shiftCount = await Sale.countDocuments({ shiftId: shift._id });
+        const shiftCount = await prisma.sale.count({ where: { shiftId: shift.id } });
         const receiptId = `${order.platform.toUpperCase().slice(0, 2)}-${shiftCount + 1}`;
 
-        // Create Sale
-        const newSale = new Sale({
-            tenantId: req.tenantId,
-            storeId: shift.storeId,
-            receiptId,
-            shiftId: shift._id,
-            date: new Date(),
-            method: paymentMethod,
-            orderType: 'online',
-            cashier: req.user.username,
-            total: order.total,
-            items: saleItems
+        const sale = await prisma.sale.create({
+            data: {
+                tenantId: req.tenantId,
+                storeId: shift.storeId,
+                receiptId,
+                shiftId: shift.id,
+                date: new Date(),
+                method: paymentMethod,
+                orderType: 'online',
+                cashier: req.user.username,
+                total: order.total,
+                items: saleItems,
+                splitPayments: []
+            }
         });
-        const sale = await newSale.save();
 
-        // Update online order
-        order.status = 'accepted';
-        order.saleId = sale._id;
-        order.acceptedBy = req.user.username;
-        order.acceptedAt = new Date();
-        order.updatedAt = new Date();
-        await order.save();
+        const updatedOrder = await prisma.onlineOrder.update({
+            where: { id: order.id },
+            data: {
+                status: 'accepted',
+                saleId: sale.id,
+                acceptedBy: req.user.username,
+                acceptedAt: new Date(),
+                updatedAt: new Date()
+            }
+        });
 
         // Try to update status on the platform
         try {
-            const config = await EcommerceConfig.findOne({ tenantId: req.tenantId, platform: order.platform });
+            const config = await prisma.ecommerceConfig.findFirst({
+                where: { tenantId: req.tenantId, platform: order.platform }
+            });
             if (config?.enabled) {
                 const connector = getConnector(order.platform, config);
                 if (order.platform === 'woocommerce') {
                     await connector.updateOrderStatus(order.platformOrderId, 'processing');
                 } else if (order.platform === 'jumia') {
-                    const itemIds = order.items.map(i => i.platformItemId).filter(Boolean);
+                    const itemIds = orderItems.map(i => i.platformItemId).filter(Boolean);
                     if (itemIds.length) await connector.confirmOrder(itemIds);
+                } else if (order.platform === 'noon') {
+                    await connector.confirmOrder(order.platformOrderId);
                 }
-                // Amazon: status update handled separately (fulfillment flow)
             }
         } catch (platformErr) {
             console.warn('[integrations] Platform status update failed (non-critical):', platformErr.message);
         }
 
-        res.json({ msg: 'Order accepted and added to POS', sale, order });
+        res.json({ msg: 'Order accepted and added to POS', sale, order: updatedOrder });
     } catch (err) {
         console.error('[integrations] POST /orders/:id/accept', err.message);
         res.status(500).json({ msg: `Error accepting order: ${err.message}` });
@@ -611,22 +618,28 @@ router.post('/orders/:id/accept', auth, async (req, res) => {
 
 /**
  * POST /api/integrations/orders/:id/reject
- * Reject a pending order
- * Body: { reason: 'Out of stock' }
  */
 router.post('/orders/:id/reject', auth, async (req, res) => {
     try {
-        const order = await OnlineOrder.findOne({ _id: req.params.id, tenantId: req.tenantId, status: 'pending' });
+        const order = await prisma.onlineOrder.findFirst({
+            where: { id: req.params.id, tenantId: req.tenantId, status: 'pending' }
+        });
         if (!order) return res.status(404).json({ msg: 'Pending order not found' });
 
-        order.status = 'rejected';
-        order.rejectedReason = req.body.reason || 'Rejected by cashier';
-        order.updatedAt = new Date();
-        await order.save();
+        const updatedOrder = await prisma.onlineOrder.update({
+            where: { id: order.id },
+            data: {
+                status: 'rejected',
+                rejectedReason: req.body.reason || 'Rejected by cashier',
+                updatedAt: new Date()
+            }
+        });
 
         // Try to cancel on platform
         try {
-            const config = await EcommerceConfig.findOne({ tenantId: req.tenantId, platform: order.platform });
+            const config = await prisma.ecommerceConfig.findFirst({
+                where: { tenantId: req.tenantId, platform: order.platform }
+            });
             if (config?.enabled && order.platform === 'woocommerce') {
                 const connector = getConnector(order.platform, config);
                 await connector.updateOrderStatus(order.platformOrderId, 'cancelled');
@@ -635,7 +648,7 @@ router.post('/orders/:id/reject', auth, async (req, res) => {
             console.warn('[integrations] Platform cancel failed (non-critical):', platformErr.message);
         }
 
-        res.json({ msg: 'Order rejected', order });
+        res.json({ msg: 'Order rejected', order: updatedOrder });
     } catch (err) {
         console.error('[integrations] POST /orders/:id/reject', err.message);
         res.status(500).json({ msg: 'Server Error' });
@@ -646,24 +659,20 @@ router.post('/orders/:id/reject', auth, async (req, res) => {
 // WOOCOMMERCE WEBHOOK
 // ─────────────────────────────────────────────
 
-/**
- * POST /api/integrations/woocommerce/webhook
- * Receives real-time order notifications from WooCommerce
- * WooCommerce sends a HMAC-SHA256 signature in X-WC-Webhook-Signature header
- */
 router.post('/woocommerce/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
     try {
         const rawBody = req.body;
         const signature = req.headers['x-wc-webhook-signature'];
         const topic = req.headers['x-wc-webhook-topic'];
-        const tenantId = req.query.tenantId; // Pass tenantId as query param when registering webhook
+        const tenantId = req.query.tenantId;
 
         if (!tenantId) {
             return res.status(400).json({ msg: 'tenantId query param required' });
         }
 
-        // Find config and verify signature
-        const config = await EcommerceConfig.findOne({ platform: 'woocommerce', tenantId });
+        const config = await prisma.ecommerceConfig.findFirst({
+            where: { platform: 'woocommerce', tenantId }
+        });
         if (!config) return res.status(404).json({ msg: 'Config not found' });
 
         if (config.woocommerce?.webhookSecret && signature) {
@@ -677,20 +686,24 @@ router.post('/woocommerce/webhook', express.raw({ type: 'application/json' }), a
             }
         }
 
-        // Process order.created and order.updated topics
         if (topic === 'order.created' || topic === 'order.updated') {
             const wcOrder = JSON.parse(rawBody.toString());
 
-            // Only import new orders in processing status
             if (wcOrder.status === 'processing' || wcOrder.status === 'pending') {
                 const normalized = WooCommerceConnector.normalizeOrder(wcOrder);
                 normalized.items = await linkItemsToProducts(tenantId, normalized.items);
 
-                await OnlineOrder.findOneAndUpdate(
-                    { tenantId, platform: 'woocommerce', platformOrderId: normalized.platformOrderId },
-                    { $setOnInsert: { tenantId, ...normalized } },
-                    { upsert: true, new: true }
-                );
+                await prisma.onlineOrder.upsert({
+                    where: {
+                        tenantId_platform_platformOrderId: {
+                            tenantId,
+                            platform: 'woocommerce',
+                            platformOrderId: normalized.platformOrderId
+                        }
+                    },
+                    create: { tenantId, ...normalized },
+                    update: {} // Don't overwrite existing
+                });
             }
         }
 
@@ -702,3 +715,4 @@ router.post('/woocommerce/webhook', express.raw({ type: 'application/json' }), a
 });
 
 module.exports = router;
+module.exports.syncBackgroundTask = syncBackgroundTask;

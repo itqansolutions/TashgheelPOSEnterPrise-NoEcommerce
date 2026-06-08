@@ -1,8 +1,8 @@
-const mongoose = require('mongoose');
+const mongoose = require('../db');
 
 const ecommerceConfigSchema = new mongoose.Schema({
     tenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', required: true },
-    platform: { type: String, enum: ['amazon', 'jumia', 'woocommerce'], required: true },
+    platform: { type: String, enum: ['amazon', 'jumia', 'woocommerce', 'noon'], required: true },
 
     enabled: { type: Boolean, default: false },
 
@@ -31,6 +31,15 @@ const ecommerceConfigSchema = new mongoose.Schema({
         region: { type: String, default: 'eu-west-1' }
     },
 
+    // Noon Egypt credentials
+    noon: {
+        email: String,             // Noon partner account email
+        password: String,          // Noon partner account password
+        storeCode: String,         // Warehouse/Store code provided by Noon
+        businessId: String,        // Noon Business ID (optional, from portal)
+        apiUrl: { type: String, default: 'https://api.noon.partners/v2' }
+    },
+
     // Sync settings
     syncSettings: {
         pushProducts: { type: Boolean, default: true },
@@ -43,7 +52,7 @@ const ecommerceConfigSchema = new mongoose.Schema({
 
     // Status tracking
     lastSyncAt: Date,
-    lastSyncStatus: { type: String, enum: ['success', 'error', 'never'], default: 'never' },
+    lastSyncStatus: { type: String, enum: ['success', 'error', 'never', 'syncing'], default: 'never' },
     lastSyncError: String,
     ordersImported: { type: Number, default: 0 },
     productsImported: { type: Number, default: 0 },

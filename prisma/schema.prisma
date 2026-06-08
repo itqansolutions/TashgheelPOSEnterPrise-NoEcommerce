@@ -1,0 +1,442 @@
+// This is your Prisma schema file for Prisma v7+
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// TENANT (Multi-tenant root)
+// ─────────────────────────────────────────────
+model Tenant {
+  id                 String    @id @default(uuid())
+  businessName       String
+  email              String    @unique
+  phone              String
+  trialEndsAt        DateTime
+  subscriptionEndsAt DateTime?
+  isSubscribed       Boolean   @default(false)
+  status             String    @default("active") // active | on_hold | suspended
+  subscriptionPlan   String    @default("free_trial") // free_trial | monthly | yearly
+
+  // Settings (flattened from nested object)
+  shopName       String?
+  shopAddress    String?
+  shopLogo       String?
+  footerMessage  String?
+  taxRate        Float   @default(0)
+  taxName        String  @default("Tax")
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  users              User[]
+  products           Product[]
+  sales              Sale[]
+  salesmen           Salesman[]
+  expenses           Expense[]
+  categories         Category[]
+  stockAdjustments   StockAdjustment[]
+  shifts             Shift[]
+  auditLogs          AuditLog[]
+  suppliers          Supplier[]
+  purchases          Purchase[]
+  ledgerTransactions LedgerTransaction[]
+  stores             Store[]
+  customers          Customer[]
+  ecommerceConfigs   EcommerceConfig[]
+  onlineOrders       OnlineOrder[]
+
+  @@map("tenants")
+}
+
+// ─────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────
+model User {
+  id            String   @id @default(uuid())
+  tenantId      String
+  username      String
+  passwordHash  String
+  role          String   @default("cashier") // admin | manager | cashier
+  fullName      String
+  active        Boolean  @default(true)
+  allowedStores String[] @default([]) // Array of store IDs
+  allowedPages  String[] @default([])
+  createdAt     DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, username])
+  @@index([tenantId])
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// STORE (Warehouse / Branch)
+// ─────────────────────────────────────────────
+model Store {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  location  String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("stores")
+}
+
+// ─────────────────────────────────────────────
+// PRODUCT
+// ─────────────────────────────────────────────
+model Product {
+  id            String   @id @default(uuid())
+  tenantId      String
+  name          String
+  nameEn        String?
+  barcode       String?
+  price         Float
+  priceOnline   Float    @default(0)
+  priceDelivery Float    @default(0)
+  cost          Float    @default(0)
+  stock         Float    @default(0)
+  minStock      Float    @default(0)
+  stores        Json     @default("[]") // [{ storeId, stock }]
+  trackStock    Boolean  @default(true)
+  active        Boolean  @default(true)
+  category      String?
+  categoryEn    String?
+  imageUrl      String?
+  onlineActive  Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, barcode])
+  @@map("products")
+}
+
+// ─────────────────────────────────────────────
+// CATEGORY
+// ─────────────────────────────────────────────
+model Category {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  nameEn    String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, name])
+  @@map("categories")
+}
+
+// ─────────────────────────────────────────────
+// CUSTOMER
+// ─────────────────────────────────────────────
+model Customer {
+  id            String   @id @default(uuid())
+  tenantId      String
+  name          String
+  phone         String
+  email         String?
+  address       String?
+  loyaltyPoints Float    @default(0)
+  balance       Float    @default(0)
+  createdAt     DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("customers")
+}
+
+// ─────────────────────────────────────────────
+// SUPPLIER
+// ─────────────────────────────────────────────
+model Supplier {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  phone     String
+  address   String?
+  balance   Float    @default(0)
+  createdAt DateTime @default(now())
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  purchases Purchase[]
+
+  @@index([tenantId])
+  @@map("suppliers")
+}
+
+// ─────────────────────────────────────────────
+// SALESMAN
+// ─────────────────────────────────────────────
+model Salesman {
+  id       String @id @default(uuid())
+  tenantId String
+  name     String
+  targets  Json   @default("[]") // [{ month, year, target }]
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("salesmen")
+}
+
+// ─────────────────────────────────────────────
+// SHIFT
+// ─────────────────────────────────────────────
+model Shift {
+  id           String    @id @default(uuid())
+  tenantId     String
+  storeId      String
+  cashier      String
+  startTime    DateTime  @default(now())
+  endTime      DateTime?
+  startCash    Float
+  endCash      Float?
+  actualCash   Float?
+  actualCard   Float?
+  actualMobile Float?
+
+  // Snapshot fields
+  totalSales    Float  @default(0)
+  cashSales     Float  @default(0)
+  cardSales     Float  @default(0)
+  mobileSales   Float  @default(0)
+  returnsTotal  Float  @default(0)
+  expensesTotal Float  @default(0)
+
+  status       String @default("open") // open | closed
+  transactions Json   @default("[]")   // [{ type, amount, reason, time }]
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sales  Sale[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, cashier, status])
+  @@map("shifts")
+}
+
+// ─────────────────────────────────────────────
+// SALE
+// ─────────────────────────────────────────────
+model Sale {
+  id            String   @id @default(uuid())
+  tenantId      String
+  storeId       String
+  receiptId     String
+  shiftId       String?
+  customerId    String?
+  date          DateTime @default(now())
+  orderType     String   @default("instore") // instore | online | delivery
+  platform      String   @default("local")   // local | woocommerce | jumia | amazon
+  onlineOrderId String?
+  method        String   // cash | card | mobile | split | credit
+  splitPayments Json     @default("[]") // [{ method, amount }]
+  cashier       String
+  salesman      String?
+  total         Float
+  taxAmount     Float    @default(0)
+  taxName       String?
+  taxRate       Float?
+  items         Json     @default("[]") // [{ code, name, qty, price, discount, cost, returnedQty }]
+  status        String   @default("finished") // finished | returned | partial_returned | cancelled
+  returns       Json     @default("[]") // [{ date, items, totalRefund, cashier }]
+  returnReason  String?
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shift  Shift?  @relation(fields: [shiftId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, shiftId])
+  @@map("sales")
+}
+
+// ─────────────────────────────────────────────
+// EXPENSE
+// ─────────────────────────────────────────────
+model Expense {
+  id          String  @id @default(uuid())
+  tenantId    String
+  date        String  // ISO date string YYYY-MM-DD
+  seller      String?
+  description String
+  amount      Float
+  method      String  @default("cash")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("expenses")
+}
+
+// ─────────────────────────────────────────────
+// PURCHASE
+// ─────────────────────────────────────────────
+model Purchase {
+  id         String   @id @default(uuid())
+  tenantId   String
+  storeId    String
+  supplierId String
+  receiptId  String
+  date       DateTime @default(now())
+  total      Float
+  cashPaid   Float    @default(0)
+  items      Json     @default("[]") // [{ code, name, qty, cost }]
+  cashier    String
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+
+  @@index([tenantId])
+  @@map("purchases")
+}
+
+// ─────────────────────────────────────────────
+// STOCK ADJUSTMENT
+// ─────────────────────────────────────────────
+model StockAdjustment {
+  id         String   @id @default(uuid())
+  tenantId   String
+  storeId    String
+  date       DateTime @default(now())
+  adjustedBy String
+  items      Json     @default("[]") // [{ productId, productName, oldStock, newStock, difference, reason }]
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("stock_adjustments")
+}
+
+// ─────────────────────────────────────────────
+// AUDIT LOG
+// ─────────────────────────────────────────────
+model AuditLog {
+  id        String   @id @default(uuid())
+  tenantId  String
+  user      String
+  action    String
+  details   Json?
+  timestamp DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────
+// LEDGER TRANSACTION
+// ─────────────────────────────────────────────
+model LedgerTransaction {
+  id          String   @id @default(uuid())
+  tenantId    String
+  entityType  String   // customer | supplier
+  entityId    String   // customerId or supplierId
+  type        String   // purchase | sale | payment | refund
+  amount      Float
+  referenceId String?  // Purchase ID or Sale ID
+  date        DateTime @default(now())
+  notes       String?
+  cashier     String?
+
+  // entityId is polymorphic (can reference Customer or Supplier id)
+  // Prisma does not support polymorphic relations, so we keep it as a plain String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, entityId])
+  @@map("ledger_transactions")
+}
+
+// ─────────────────────────────────────────────
+// E-COMMERCE CONFIG
+// ─────────────────────────────────────────────
+model EcommerceConfig {
+  id       String  @id @default(uuid())
+  tenantId String
+  platform String  // woocommerce | jumia | amazon | noon
+  enabled  Boolean @default(false)
+
+  // Platform credentials stored as JSON objects
+  woocommerce  Json? // { siteUrl, consumerKey, consumerSecret, webhookSecret }
+  jumia        Json? // { apiKey, apiUrl, userId }
+  amazon       Json? // { sellerId, marketplaceId, clientId, clientSecret, refreshToken, region }
+  noon         Json? // { email, password, storeCode, businessId, apiUrl }
+  syncSettings Json? // { pushProducts, pullProducts, pullOrders, defaultStoreId, autoAcceptOrders, syncIntervalMinutes }
+
+  lastSyncAt       DateTime?
+  lastSyncStatus   String    @default("never") // success | error | never | syncing
+  lastSyncError    String?
+  ordersImported   Int       @default(0)
+  productsImported Int       @default(0)
+  productsPushed   Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, platform])
+  @@index([tenantId])
+  @@map("ecommerce_configs")
+}
+
+// ─────────────────────────────────────────────
+// ONLINE ORDER
+// ─────────────────────────────────────────────
+model OnlineOrder {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  platform            String   // amazon | jumia | woocommerce | noon
+  platformOrderId     String
+  platformOrderNumber String?
+  status              String   @default("pending") // pending | accepted | rejected | processing | shipped | completed | cancelled
+
+  // Customer info
+  customerName    String?
+  customerEmail   String?
+  customerPhone   String?
+  shippingAddress Json?   // { line1, line2, city, country }
+
+  // Order items
+  items Json @default("[]") // [{ platformItemId, sku, name, qty, price, productId }]
+
+  // Financials
+  subtotal       Float  @default(0)
+  shippingCost   Float  @default(0)
+  discount       Float  @default(0)
+  total          Float  @default(0)
+  currency       String @default("EGP")
+  paymentMethod  String?
+  paymentStatus  String @default("pending")
+
+  notes          String?
+  saleId         String?
+  acceptedBy     String?
+  acceptedAt     DateTime?
+  rejectedReason String?
+  rawPayload     Json?
+
+  platformCreatedAt DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @default(now()) @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, platform, platformOrderId])
+  @@index([tenantId, status])
+  @@map("online_orders")
+}

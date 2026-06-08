@@ -1,5 +1,4 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
@@ -7,25 +6,34 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.log(err));
+// Connect to PostgreSQL via Prisma
+const prisma = require('./prisma');
 
-// Serve static files from the parent directory FIRST
-const path = require('path');
-app.use(express.static(path.join(__dirname, '../')));
+async function startServer() {
+    try {
+        await prisma.$connect();
+        console.log('PostgreSQL Connected via Prisma ✓');
 
-// Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api', require('./routes/api'));
-app.use('/api/super-admin', require('./routes/super-admin'));
-app.use('/api/integrations', require('./routes/integrations'));
+        // Serve static files from the parent directory
+        const path = require('path');
+        app.use(express.static(path.join(__dirname, '../')));
 
-const PORT = process.env.PORT || 5000;
+        // Routes
+        app.use('/api/auth', require('./routes/auth'));
+        app.use('/api', require('./routes/api'));
+        app.use('/api/super-admin', require('./routes/super-admin'));
+        app.use('/api/integrations', require('./routes/integrations'));
 
-app.listen(PORT, () => console.log(`Server started on port ${PORT} [v2]`));
+        const PORT = process.env.PORT || 5000;
+        app.listen(PORT, () => console.log(`Server started on port ${PORT} [v4-prisma]`));
+    } catch (err) {
+        console.error('Database connection failed:', err.message);
+        process.exit(1);
+    }
+}
+
+startServer();
 
 module.exports = app;

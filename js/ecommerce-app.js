@@ -129,6 +129,7 @@ function getPlatformIcon(platform) {
         case 'woocommerce': return `<i class="fab fa-wordpress text-brand-purple"></i>`;
         case 'amazon': return `<i class="fab fa-amazon text-brand-blue"></i>`;
         case 'jumia': return `<i class="fas fa-shopping-bag text-brand-orange"></i>`;
+        case 'noon': return `<span style="font-size:1rem">🌙</span>`;
         default: return `<i class="fas fa-globe"></i>`;
     }
 }
@@ -231,7 +232,7 @@ async function rejectOrder() {
 }
 
 async function syncAllPlatforms() {
-    const platforms = ['woocommerce', 'jumia', 'amazon'];
+    const platforms = ['woocommerce', 'jumia', 'amazon', 'noon'];
     const btn = event.currentTarget;
     const originalHtml = btn.innerHTML;
     

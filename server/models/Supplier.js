@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require('../db');
 
 const SupplierSchema = new mongoose.Schema({
     tenantId: {
