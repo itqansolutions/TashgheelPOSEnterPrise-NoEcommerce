@@ -580,13 +580,29 @@ function renderProducts() {
     const div = document.createElement("div");
     div.className = "product-card";
     if (product.trackStock !== false && currentStock <= 0) div.classList.add("out-of-stock");
+    
+    // Clicking anywhere on the card adds to cart
     div.onclick = () => addToCart({ ...product, currentStock });
-    const stockDisplay = (product.trackStock === false) ? '<span style="font-size:1.5em; color:#2ecc71;">∞</span>' : `Stock: ${currentStock}`;
+    
+    const stockDisplay = (product.trackStock === false) ? '<span style="font-weight: bold; color:#10b981;">∞</span>' : `Stock: ${currentStock}`;
+    
+    const imageHtml = product.imageUrl 
+      ? `<img src="${product.imageUrl}" alt="${product.name}">`
+      : `<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 text-slate-400 text-3xl"><i class="fas fa-box text-xl opacity-40"></i></div>`;
 
     div.innerHTML = `
-      <h4>${product.name}</h4>
-      <p>${product.price.toFixed(2)}</p>
-      <p>${stockDisplay}</p>
+      <div class="image-wrapper">
+        ${imageHtml}
+      </div>
+      <div class="info">
+        <span class="category">${product.category || 'General'}</span>
+        <h4 class="title">${product.name}</h4>
+        <div class="flex justify-between items-center mt-auto">
+          <p class="price">$${product.price.toFixed(2)}</p>
+          <span class="stock text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100">${stockDisplay}</span>
+        </div>
+        <button class="add-btn mt-2">Add to Cart</button>
+      </div>
     `;
     grid.appendChild(div);
   });
@@ -1452,14 +1468,43 @@ function renderCategories(categories) {
   const existingButtons = container.querySelectorAll('button:not([data-id="all"])');
   existingButtons.forEach(btn => btn.remove());
 
+  const iconMap = {
+    'electronics': 'fa-laptop',
+    'apparel': 'fa-tshirt',
+    'groceries': 'fa-basket-shopping',
+    'sales': 'fa-tags',
+    'reports': 'fa-chart-simple',
+    'indicators': 'fa-chart-pie',
+    'shipping': 'fa-truck',
+    'clothing': 'fa-tshirt',
+    'food': 'fa-utensils',
+    'الكترونيات': 'fa-laptop',
+    'ملابس': 'fa-tshirt',
+    'بقالة': 'fa-basket-shopping',
+    'مبيعات': 'fa-tags',
+    'تقارير': 'fa-chart-simple',
+    'مؤشرات': 'fa-chart-pie',
+    'شحن': 'fa-truck'
+  };
+
   categories.forEach(cat => {
     const btn = document.createElement('button');
-    btn.className = 'btn btn-secondary category-btn';
+    btn.className = 'category-btn';
+    btn.dataset.id = cat.name;
+
+    const nameLower = cat.name.toLowerCase();
+    const nameEnLower = (cat.nameEn || '').toLowerCase();
+    const iconClass = iconMap[nameLower] || iconMap[nameEnLower] || 'fa-tag';
+
     const lang = localStorage.getItem('pos_language') || 'en';
-    btn.textContent = lang === 'ar' ? cat.name : (cat.nameEn || cat.name);
+    const displayName = lang === 'ar' ? cat.name : (cat.nameEn || cat.name);
+
+    btn.innerHTML = `
+      <i class="fas ${iconClass} text-xl mb-2"></i>
+      <span>${displayName}</span>
+    `;
 
     btn.onclick = () => filterProducts(cat.name, btn);
-    btn.dataset.id = cat.name;
     container.appendChild(btn);
   });
 }
