@@ -70,9 +70,9 @@ function renderSuppliers() {
             <td>${supp.address || '-'}</td>
             <td style="font-weight:bold; color: ${supp.balance > 0 ? '#e74c3c' : '#2ecc71'}">${supp.balance.toFixed(2)}</td>
             <td>
-                <button class="btn btn-sm btn-primary" onclick="editSupplier('${supp._id}')">✏️</button>
-                <button class="btn btn-sm btn-success" onclick="openPaymentModal('${supp._id}')">💸 Pay</button>
-                <button class="btn btn-sm btn-secondary" onclick="openStatementModal('${supp._id}')">📄 Statement</button>
+                <button class="btn btn-sm btn-primary" onclick="editSupplier('${supp.id}')">✏️</button>
+                <button class="btn btn-sm btn-success" onclick="openPaymentModal('${supp.id}')">💸 Pay</button>
+                <button class="btn btn-sm btn-secondary" onclick="openStatementModal('${supp.id}')">📄 Statement</button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -80,9 +80,9 @@ function renderSuppliers() {
 }
 
 function editSupplier(id) {
-    const supp = suppliers.find(s => s._id === id);
+    const supp = suppliers.find(s => s.id === id);
     if (supp) {
-        document.getElementById('supplier-id').value = supp._id;
+        document.getElementById('supplier-id').value = supp.id;
         document.getElementById('supplier-name').value = supp.name;
         document.getElementById('supplier-phone').value = supp.phone;
         document.getElementById('supplier-address').value = supp.address || '';
@@ -96,7 +96,7 @@ function resetForm() {
 
 function openPaymentModal(id) {
     currentSupplierId = id;
-    const supp = suppliers.find(s => s._id === id);
+    const supp = suppliers.find(s => s.id === id);
     document.getElementById('paymentSupplierName').textContent = supp.name;
     document.getElementById('paymentSupplierBalance').textContent = supp.balance.toFixed(2);
     document.getElementById('paymentAmount').value = '';
@@ -137,7 +137,7 @@ async function submitPayment() {
 
 async function openStatementModal(id) {
     currentSupplierId = id;
-    const supp = suppliers.find(s => s._id === id);
+    const supp = suppliers.find(s => s.id === id);
     document.getElementById('statementSupplierName').textContent = supp.name;
     
     try {

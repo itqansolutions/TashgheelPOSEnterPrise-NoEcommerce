@@ -52,9 +52,9 @@ async function renderReceiptsTable() {
       <td>${getReturnReason(r)}</td>
       <td>
         <div style="display:flex; flex-wrap: wrap; gap:5px; justify-content:center;">
-          <button class="btn btn-secondary btn-action" title="Print" onclick="printReceipt('${r._id}')">🖨️</button>
-          <button class="btn btn-warning btn-action" title="Return" onclick="openReturnModal('${r._id}')">↩️</button>
-          <button class="btn btn-danger btn-action" title="Cancel" onclick="cancelSale('${r._id}')">❌</button>
+          <button class="btn btn-secondary btn-action" title="Print" onclick="printReceipt('${r.id}')">🖨️</button>
+          <button class="btn btn-warning btn-action" title="Return" onclick="openReturnModal('${r.id}')">↩️</button>
+          <button class="btn btn-danger btn-action" title="Cancel" onclick="cancelSale('${r.id}')">❌</button>
         </div>
       </td>
     `;
@@ -370,7 +370,7 @@ async function confirmPartialReturn() {
     if (qty > (item.qty - (item.returnedQty || 0))) return alert(`Qty exceeds remaining stock for ${item.name}`);
 
     itemsToReturn.push({
-      code: item.code || item._id, // Send code or ID to backend
+      code: item.code || item.id, // Send code or ID to backend
       qty: qty,
       reason: reason
     });
@@ -380,7 +380,7 @@ async function confirmPartialReturn() {
 
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/sales/${currentReturnReceipt._id || currentReturnReceipt.receiptId}/return`, {
+    const response = await fetch(`${API_URL}/sales/${currentReturnReceipt.id || currentReturnReceipt.receiptId}/return`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -426,7 +426,7 @@ async function cancelSale(receiptId) {
       const remaining = item.qty - (item.returnedQty || 0);
       if (remaining > 0) {
         itemsToReturn.push({
-          code: item.code || item._id,
+          code: item.code || item.id,
           qty: remaining
         });
       }
@@ -436,7 +436,7 @@ async function cancelSale(receiptId) {
       return alert("This sale is already fully returned.");
     }
 
-    const response = await fetch(`${API_URL}/sales/${receipt._id}/return`, {
+    const response = await fetch(`${API_URL}/sales/${receipt.id}/return`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

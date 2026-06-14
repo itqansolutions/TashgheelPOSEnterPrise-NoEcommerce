@@ -70,9 +70,9 @@ function renderCustomers() {
             <td>${cust.address || '-'}</td>
             <td style="font-weight:bold; color: ${cust.balance > 0 ? '#e74c3c' : '#2ecc71'}">${cust.balance.toFixed(2)}</td>
             <td>
-                <button class="btn btn-sm btn-primary" onclick="editCustomer('${cust._id}')">✏️</button>
-                <button class="btn btn-sm btn-success" onclick="openPaymentModal('${cust._id}')">💸 Receive</button>
-                <button class="btn btn-sm btn-secondary" onclick="openStatementModal('${cust._id}')">📄 Statement</button>
+                <button class="btn btn-sm btn-primary" onclick="editCustomer('${cust.id}')">✏️</button>
+                <button class="btn btn-sm btn-success" onclick="openPaymentModal('${cust.id}')">💸 Receive</button>
+                <button class="btn btn-sm btn-secondary" onclick="openStatementModal('${cust.id}')">📄 Statement</button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -80,9 +80,9 @@ function renderCustomers() {
 }
 
 function editCustomer(id) {
-    const cust = customers.find(c => c._id === id);
+    const cust = customers.find(c => c.id === id);
     if (cust) {
-        document.getElementById('customer-id').value = cust._id;
+        document.getElementById('customer-id').value = cust.id;
         document.getElementById('customer-name').value = cust.name;
         document.getElementById('customer-phone').value = cust.phone;
         document.getElementById('customer-address').value = cust.address || '';
@@ -96,7 +96,7 @@ function resetForm() {
 
 function openPaymentModal(id) {
     currentCustomerId = id;
-    const cust = customers.find(c => c._id === id);
+    const cust = customers.find(c => c.id === id);
     document.getElementById('paymentCustomerName').textContent = cust.name;
     document.getElementById('paymentCustomerBalance').textContent = cust.balance.toFixed(2);
     document.getElementById('paymentAmount').value = '';
@@ -137,7 +137,7 @@ async function submitPayment() {
 
 async function openStatementModal(id) {
     currentCustomerId = id;
-    const cust = customers.find(c => c._id === id);
+    const cust = customers.find(c => c.id === id);
     document.getElementById('statementCustomerName').textContent = cust.name;
     
     try {

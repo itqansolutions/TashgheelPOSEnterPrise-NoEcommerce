@@ -130,8 +130,8 @@ function renderProductTable(products) {
         <td class="text-gray-600 font-semibold">${p.priceWooCommerce?.toFixed(2) || "-"}</td>
         <td class="font-bold">${p.stock || 0}</td>
         <td>
-          <button class="btn btn-secondary btn-sm" onclick="editProduct('${p._id}')">✏️</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p._id}')">🗑️</button>
+          <button class="btn btn-secondary btn-sm" onclick="editProduct('${p.id}')">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">🗑️</button>
         </td>
       `;
       tbody.appendChild(row);
@@ -227,10 +227,10 @@ async function handleAddProduct(e) {
 }
 
 function editProduct(id) {
-  const product = window.allProducts?.find(p => p._id === id);
+  const product = window.allProducts?.find(p => p.id === id);
   if (!product) return;
 
-  document.getElementById("edit-product-id").value = product._id;
+  document.getElementById("edit-product-id").value = product.id;
   document.getElementById("edit-product-name").value = product.name;
   document.getElementById("edit-product-barcode").value = product.barcode || "";
   document.getElementById("edit-product-price").value = product.price;
@@ -349,7 +349,7 @@ async function loadCategories() {
       row.innerHTML = `
                 <td>${cat.name}</td>
                 <td style="text-align:right;">
-                    <button class="btn btn-danger btn-sm" onclick="deleteCategory('${cat._id}')">🗑️</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteCategory('${cat.id}')">🗑️</button>
                 </td>
             `;
       listBody.appendChild(row);

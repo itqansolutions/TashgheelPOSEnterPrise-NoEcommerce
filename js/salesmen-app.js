@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // But I need the current targets first.
 
       // Let's assume loadData populates a global variable `allSalesmen`.
-      const salesman = allSalesmen.find(s => s._id === salesmanId);
+      const salesman = allSalesmen.find(s => s.id === salesmanId);
       if (!salesman) return;
 
       const newTargets = salesman.targets ? [...salesman.targets] : [];
@@ -174,7 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const row = document.createElement('tr');
       row.innerHTML = `
         <td>${s.name}</td>
-        <td><button onclick="deleteSalesman('${s._id}')">🗑️</button></td>
+        <td><button onclick="deleteSalesman('${s.id}')">🗑️</button></td>
       `;
       salesmenTable.appendChild(row);
     });
@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
     targetSalesman.innerHTML = '<option value="">--</option>';
     allSalesmen.forEach(s => {
       const opt = document.createElement('option');
-      opt.value = s._id; // Use ID
+      opt.value = s.id; // Use ID
       opt.textContent = s.name;
       targetSalesman.appendChild(opt);
     });

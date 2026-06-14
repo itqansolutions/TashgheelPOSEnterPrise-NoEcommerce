@@ -70,7 +70,7 @@ async function checkOpenShift() {
         if (user.role === 'admin') {
             allowedStores = allStores;
         } else {
-            allowedStores = allStores.filter(s => (user.allowedStores || []).includes(s._id));
+            allowedStores = allStores.filter(s => (user.allowedStores || []).includes(s.id));
         }
     }
 
@@ -81,7 +81,7 @@ async function checkOpenShift() {
         storeSelect.innerHTML = '';
         allowedStores.forEach(s => {
             const opt = document.createElement('option');
-            opt.value = s._id;
+            opt.value = s.id;
             opt.textContent = s.name;
             storeSelect.appendChild(opt);
         });
@@ -91,7 +91,7 @@ async function checkOpenShift() {
         posWarehouseSelector.innerHTML = '';
         allowedStores.forEach(s => {
             const opt = document.createElement('option');
-            opt.value = s._id;
+            opt.value = s.id;
             opt.textContent = s.name;
             posWarehouseSelector.appendChild(opt);
         });
@@ -102,7 +102,7 @@ async function checkOpenShift() {
         
         // Restore last selected store if available
         const savedStore = localStorage.getItem('pos_selected_store');
-        if (savedStore && allowedStores.find(s => s._id === savedStore)) {
+        if (savedStore && allowedStores.find(s => s.id === savedStore)) {
             posWarehouseSelector.value = savedStore;
         }
     }
@@ -136,8 +136,14 @@ async function checkOpenShift() {
         }
 
         // Offer to Resume.
-        document.getElementById('resumeShiftTime').textContent = new Date(shift.startTime).toLocaleString();
-        document.getElementById('resumeShiftModal').style.display = 'flex';
+        const resumeShiftTimeEl = document.getElementById('resumeShiftTime');
+        const resumeShiftModalEl = document.getElementById('resumeShiftModal');
+        if (resumeShiftTimeEl) {
+          resumeShiftTimeEl.textContent = new Date(shift.startTime).toLocaleString();
+        }
+        if (resumeShiftModalEl) {
+          resumeShiftModalEl.style.display = 'flex';
+        }
         disablePOS();
       } else {
         // Different user. Read Only Mode.
@@ -663,7 +669,7 @@ async function loadCustomers() {
       select.innerHTML = `<option value="">--</option>`;
       customers.forEach(c => {
         const opt = document.createElement("option");
-        opt.value = c._id;
+        opt.value = c.id;
         opt.textContent = `${c.name} (Bal: ${c.balance.toFixed(2)})`;
         select.appendChild(opt);
       });
@@ -679,7 +685,7 @@ window.closeVariantModal = function() {
 };
 
 window.selectVariant = function(productId, variantSku) {
-    const product = allProducts.find(p => p._id === productId);
+    const product = allProducts.find(p => p.id === productId);
     if (!product) return;
     const variant = product.variants.find(v => v.sku === variantSku || v.barcode === variantSku);
     if (!variant) return;
@@ -689,7 +695,7 @@ window.selectVariant = function(productId, variantSku) {
     const variantProduct = {
         ...product,
         _id: variant.id, // Treat variant as unique cart item
-        productId: product._id, // Keep reference to main product
+        productId: product.id, // Keep reference to main product
         name: `${product.name} - ${Object.values(variant.attributes).join(' / ')}`,
         price: variant.price || product.price,
         code: variant.barcode || variant.sku || product.code,
@@ -723,7 +729,7 @@ function addToCart(product) {
             </div>
             <div class="text-xs text-gray-500 font-normal mt-1">Stock: ${v.stock} | Barcode: ${v.barcode || v.sku}</div>
           `;
-          btn.onclick = () => selectVariant(product._id, v.sku || v.barcode);
+          btn.onclick = () => selectVariant(product.id, v.sku || v.barcode);
           options.appendChild(btn);
       });
       
@@ -741,7 +747,7 @@ function addToCartDirect(product) {
     return;
   }
 
-  const existingItem = cart.find(item => item._id === product._id);
+  const existingItem = cart.find(item => item.id === product.id);
 
   if (existingItem) {
     // Check stock for existing item (if tracked)

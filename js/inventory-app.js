@@ -37,7 +37,7 @@ async function loadInitialData() {
         
         // Default to first store if available
         if (allStores.length > 0) {
-            selectedStoreId = allStores[0]._id;
+            selectedStoreId = allStores[0].id;
             document.getElementById("warehouse-filter").value = selectedStoreId;
         }
 
@@ -56,7 +56,7 @@ function populateStoresFilter() {
 
     allStores.forEach(s => {
         const opt = document.createElement("option");
-        opt.value = s._id;
+        opt.value = s.id;
         opt.textContent = s.name;
         filter.appendChild(opt);
     });
@@ -94,7 +94,7 @@ function renderInventory() {
             <td>${costDisplay}</td>
             <td style="font-weight:bold; ${stock < 0 ? 'color:red;' : ''}">${stockDisplay}</td>
             <td>
-                ${p.trackStock !== false ? `<button class="btn btn-warning btn-sm" onclick="openAdjustModal('${p._id}', '${p.name}', ${stock})">🛠️ Adjust</button>` : '-'}
+                ${p.trackStock !== false ? `<button class="btn btn-warning btn-sm" onclick="openAdjustModal('${p.id}', '${p.name}', ${stock})">🛠️ Adjust</button>` : '-'}
             </td>
         `;
         tbody.appendChild(row);
@@ -113,7 +113,7 @@ function filterInventory() {
 // --- ADJUSTMENT LOGIC ---
 
 function openAdjustModal(productId, productName, currentStock) {
-    const store = allStores.find(s => s._id === selectedStoreId);
+    const store = allStores.find(s => s.id === selectedStoreId);
     
     document.getElementById("adjust-product-id").value = productId;
     document.getElementById("adjust-product-name").textContent = productName;

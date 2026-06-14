@@ -197,7 +197,7 @@ async function loadUsers() {
                 <td class="px-6 py-4">${u.fullName || '-'}</td>
                 <td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase bg-gray-100">${u.role}</span></td>
                 <td class="px-6 py-4 text-right">
-                    <button onclick="deleteUser('${u._id}')" class="text-brand-red hover:text-red-700"><i class="fas fa-trash"></i></button>
+                    <button onclick="deleteUser('${u.id}')" class="text-brand-red hover:text-red-700"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>
         `).join('');

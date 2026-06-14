@@ -83,7 +83,7 @@ function renderOrders() {
 
     body.innerHTML = filtered.map(order => {
         return `
-            <tr class="hover:bg-white transition-colors cursor-pointer" onclick="viewOrder('${order._id}')">
+            <tr class="hover:bg-white transition-colors cursor-pointer" onclick="viewOrder('${order.id}')">
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-2">
                         ${getPlatformIcon(order.platform)}
@@ -107,7 +107,7 @@ function renderOrders() {
 
 async function viewOrder(id) {
     selectedOrderId = id;
-    const order = allOrders.find(o => o._id === id);
+    const order = allOrders.find(o => o.id === id);
     if (!order) return;
 
     document.getElementById('modal-platform-icon').innerHTML = getPlatformIcon(order.platform);

@@ -115,7 +115,7 @@ function renderOrders() {
                 <td class="px-6 py-4 font-bold text-brand-green-dark">${order.total.toFixed(2)} ${order.currency}</td>
                 <td class="px-6 py-4 text-xs text-gray-500">${new Date(order.createdAt).toLocaleString()}</td>
                 <td class="px-6 py-4 text-right">
-                    <button onclick="viewOrder('${order._id}')" class="bg-gray-100 text-brand-dark px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-200 transition-all">
+                    <button onclick="viewOrder('${order.id}')" class="bg-gray-100 text-brand-dark px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-200 transition-all">
                         View Details
                     </button>
                 </td>
@@ -136,7 +136,7 @@ function getPlatformIcon(platform) {
 
 async function viewOrder(id) {
     selectedOrderId = id;
-    const order = pendingOrders.find(o => o._id === id);
+    const order = pendingOrders.find(o => o.id === id);
     if (!order) return;
 
     document.getElementById('modal-platform-icon').innerHTML = getPlatformIcon(order.platform);

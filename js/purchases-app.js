@@ -39,7 +39,7 @@ async function loadSuppliers() {
         select.innerHTML = '<option value="">-- Select Supplier --</option>';
         suppliers.forEach(supp => {
             const opt = document.createElement('option');
-            opt.value = supp._id;
+            opt.value = supp.id;
             opt.textContent = supp.name;
             select.appendChild(opt);
         });
@@ -60,7 +60,7 @@ async function loadStores() {
         select.innerHTML = '<option value="">-- Select Warehouse --</option>';
         stores.forEach(s => {
             const opt = document.createElement('option');
-            opt.value = s._id;
+            opt.value = s.id;
             opt.textContent = s.name;
             select.appendChild(opt);
         });
@@ -123,14 +123,14 @@ function renderProductResults() {
                 <strong>${prod.name}</strong> ${trackStockLabel}<br>
                 <small>Barcode: ${prod.barcode || '-'} | Current Cost: ${prod.cost?.toFixed(2) || 0}</small>
             </div>
-            <button class="btn btn-sm btn-primary" onclick="addToPurchaseCart('${prod._id}')">+</button>
+            <button class="btn btn-sm btn-primary" onclick="addToPurchaseCart('${prod.id}')">+</button>
         `;
         container.appendChild(div);
     });
 }
 
 function addToPurchaseCart(productId) {
-    const prod = allProducts.find(p => p._id === productId);
+    const prod = allProducts.find(p => p.id === productId);
     if (!prod) return;
 
     const existing = purchaseCart.find(item => item.productId === productId);
@@ -138,7 +138,7 @@ function addToPurchaseCart(productId) {
         existing.qty++;
     } else {
         purchaseCart.push({
-            productId: prod._id,
+            productId: prod.id,
             barcode: prod.barcode,
             name: prod.name,
             qty: 1,

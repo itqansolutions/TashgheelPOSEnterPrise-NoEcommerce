@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const item = currentReceipt.items[idx];
       itemsToReturn.push({
-        code: item.code || item._id, // Use code or ID as identifier
+        code: item.code || item.id, // Use code or ID as identifier
         qty: returnQty
       });
     }
@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const token = localStorage.getItem('token');
 
-      const response = await fetch(`${API_URL}/sales/${currentReceipt._id}/return`, {
+      const response = await fetch(`${API_URL}/sales/${currentReceipt.id}/return`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <td>${e.description}</td>
         <td>${e.amount.toFixed(2)}</td>
         <td>${t(methodLabel(e.method, 'en'), methodLabel(e.method, 'ar'))}</td>
-        <td><button onclick="deleteExpense('${e._id}')">🗑️</button></td>
+        <td><button onclick="deleteExpense('${e.id}')">🗑️</button></td>
       `;
       expensesTableBody.appendChild(tr);
       total += e.amount;

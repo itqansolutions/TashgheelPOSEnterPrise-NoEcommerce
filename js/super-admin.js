@@ -89,13 +89,13 @@ function renderTenants(tenants) {
             <td><span class="status-badge ${statusClass}">${statusText}</span></td>
             <td>${endDate.toLocaleDateString()}</td>
             <td>
-                <button onclick="openExtendModal('${t._id}')" class="btn btn-success btn-sm">Activate/Extend</button>
-                <button onclick="resetPassword('${t._id}')" class="btn btn-info btn-sm" style="background-color: #17a2b8; color: white;">Reset Pass</button>
+                <button onclick="openExtendModal('${t.id}')" class="btn btn-success btn-sm">Activate/Extend</button>
+                <button onclick="resetPassword('${t.id}')" class="btn btn-info btn-sm" style="background-color: #17a2b8; color: white;">Reset Pass</button>
                 ${t.status === 'active'
-                ? `<button onclick="toggleHold('${t._id}', 'on_hold')" class="btn btn-warning btn-sm">Hold</button>`
-                : `<button onclick="toggleHold('${t._id}', 'active')" class="btn btn-primary btn-sm">Unhold</button>`
+                ? `<button onclick="toggleHold('${t.id}', 'on_hold')" class="btn btn-warning btn-sm">Hold</button>`
+                : `<button onclick="toggleHold('${t.id}', 'active')" class="btn btn-primary btn-sm">Unhold</button>`
             }
-                <button onclick="terminateTenant('${t._id}')" class="btn btn-danger btn-sm">Terminate</button>
+                <button onclick="terminateTenant('${t.id}')" class="btn btn-danger btn-sm">Terminate</button>
             </td>
         `;
         tbody.appendChild(tr);

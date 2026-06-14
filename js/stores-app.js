@@ -46,10 +46,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${store.name}</td>
                 <td>${store.location || '-'}</td>
                 <td>
-                    <button class="btn btn-sm btn-edit" onclick="editStore('${store._id}')">
+                    <button class="btn btn-sm btn-edit" onclick="editStore('${store.id}')">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-sm btn-delete" onclick="deleteStore('${store._id}')">
+                    <button class="btn btn-sm btn-delete" onclick="deleteStore('${store.id}')">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -59,9 +59,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.editStore = (id) => {
-        const store = stores.find(s => s._id === id);
+        const store = stores.find(s => s.id === id);
         if (store) {
-            document.getElementById('storeId').value = store._id;
+            document.getElementById('storeId').value = store.id;
             document.getElementById('storeName').value = store.name;
             document.getElementById('storeLocation').value = store.location || '';
             modalTitle.setAttribute('data-i18n', 'edit_store');
