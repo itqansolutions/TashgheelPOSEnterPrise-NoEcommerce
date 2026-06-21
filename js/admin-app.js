@@ -1,33 +1,90 @@
-// admin-app.js
-// Handles Shop Settings, User Management, and E-Commerce Integration Credentials
+// admin-app.js — Tashgheel POS Enterprise
+// Handles Shop Settings, User Management, Manager Password, and Stats Metrics
 
 const API_BASE = window.API_URL || 'http://localhost:5000/api';
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const user = JSON.parse(localStorage.getItem('currentUser'));
+    // Auth Check
+    const user = JSON.parse(localStorage.getItem('currentUser') || 'null');
     if (!user || user.role !== 'admin') {
         window.location.href = 'pos.html';
         return;
     }
 
-    document.getElementById('currentUserName').textContent = user.fullname || user.username;
+    const userNameEl = document.getElementById('currentUserName');
+    if (userNameEl) userNameEl.textContent = user.fullName || user.username;
 
-    // Load everything
+    const userRoleEl = document.getElementById('userRole');
+    if (userRoleEl) {
+        const lang = localStorage.getItem('pos_language') || 'en';
+        userRoleEl.textContent = user.role === 'admin' ? (lang === 'ar' ? 'مسؤول' : 'Admin') : user.role;
+    }
+
+    // Load elements
     loadSettings();
     loadUsers();
     loadAuditLogs();
-    loadEcommerceConfigs();
+    loadDashboardMetrics();
 
-    // Setup forms
+    // Setup Form Listeners
     setupShopForm();
+    setupManagerPasswordForm();
     setupUserForm();
-    setupEcommerceForms();
+
+    if (window.applyTranslations) window.applyTranslations();
 });
+
+// --- Helper: get token ---
+function getToken() {
+    return localStorage.getItem('token') || '';
+}
+
+// --- Fetch Dashboard Stats ---
+async function loadDashboardMetrics() {
+    const token = getToken();
+    const lang = localStorage.getItem('pos_language') || 'en';
+
+    try {
+        // 1. Today's Sales
+        const dailyRes = await fetch(`${API_BASE}/sales/daily`, {
+            headers: { 'x-auth-token': token }
+        });
+        if (dailyRes.ok) {
+            const data = await dailyRes.json();
+            const rev = data.totalSales || 0;
+            const inv = data.totalOrders || 0;
+            document.getElementById('stat-revenue').textContent = `${rev.toFixed(2)} EGP`;
+            document.getElementById('stat-invoices').textContent = inv;
+        }
+
+        // 2. Total Products
+        const prodRes = await fetch(`${API_BASE}/products`, {
+            headers: { 'x-auth-token': token }
+        });
+        if (prodRes.ok) {
+            const data = await prodRes.json();
+            const count = Array.isArray(data) ? data.length : 0;
+            document.getElementById('stat-products').textContent = count;
+        }
+
+        // 3. Total Customers
+        const custRes = await fetch(`${API_BASE}/customers`, {
+            headers: { 'x-auth-token': token }
+        });
+        if (custRes.ok) {
+            const data = await custRes.json();
+            const count = Array.isArray(data) ? data.length : 0;
+            document.getElementById('stat-customers').textContent = count;
+        }
+    } catch (err) {
+        console.error('Error fetching dashboard stats:', err);
+    }
+}
 
 // --- Shop Settings ---
 async function loadSettings() {
     try {
-        const token = localStorage.getItem('token');
+        const token = getToken();
         const res = await fetch(`${API_BASE}/settings`, {
             headers: { 'x-auth-token': token }
         });
@@ -52,160 +109,122 @@ function setupShopForm() {
     const logoInput = document.getElementById('shop-logo');
     let logoBase64 = '';
 
-    logoInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = () => {
-                logoBase64 = reader.result;
-                document.getElementById('logo-preview').src = logoBase64;
-                document.getElementById('logo-preview').style.display = 'block';
+    if (logoInput) {
+        logoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    logoBase64 = reader.result;
+                    document.getElementById('logo-preview').src = logoBase64;
+                    document.getElementById('logo-preview').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const lang = localStorage.getItem('pos_language') || 'en';
+            const settings = {
+                shopName: document.getElementById('shop-name').value,
+                shopAddress: document.getElementById('shop-address').value,
+                taxRate: parseFloat(document.getElementById('tax-rate').value || 0),
+                taxName: document.getElementById('tax-name').value,
+                footerMessage: document.getElementById('footer-message').value,
+                shopLogo: logoBase64 || document.getElementById('logo-preview').src
             };
-            reader.readAsDataURL(file);
-        }
-    });
+
+            try {
+                const res = await fetch(`${API_BASE}/settings`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'x-auth-token': getToken() },
+                    body: JSON.stringify(settings)
+                });
+                if (res.ok) {
+                    alert(lang === 'ar' ? 'تم حفظ الإعدادات بنجاح' : 'Settings saved successfully');
+                } else {
+                    alert(lang === 'ar' ? 'فشل حفظ الإعدادات' : 'Save failed');
+                }
+            } catch (e) { alert('Save failed'); }
+        });
+    }
+}
+
+// --- Manager Password Settings ---
+function setupManagerPasswordForm() {
+    const form = document.getElementById('manager-password-form');
+    if (!form) return;
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const settings = {
-            shopName: document.getElementById('shop-name').value,
-            shopAddress: document.getElementById('shop-address').value,
-            taxRate: parseFloat(document.getElementById('tax-rate').value),
-            taxName: document.getElementById('tax-name').value,
-            footerMessage: document.getElementById('footer-message').value,
-            shopLogo: logoBase64 || document.getElementById('logo-preview').src
-        };
+        const lang = localStorage.getItem('pos_language') || 'en';
+        const password = document.getElementById('new-manager-password').value;
+        const confirm = document.getElementById('confirm-manager-password').value;
+
+        if (password !== confirm) {
+            alert(lang === 'ar' ? 'كلمات المرور غير متطابقة' : 'Passwords do not match');
+            return;
+        }
+
+        if (password.length < 4) {
+            alert(lang === 'ar' ? 'يجب أن تكون كلمة المرور 4 أحرف على الأقل' : 'Password must be at least 4 characters');
+            return;
+        }
 
         try {
-            const token = localStorage.getItem('token');
             const res = await fetch(`${API_BASE}/settings`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'x-auth-token': token },
-                body: JSON.stringify(settings)
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-auth-token': getToken()
+                },
+                body: JSON.stringify({ managerPassword: password })
             });
-            if (res.ok) alert('Settings saved successfully');
-        } catch (e) { alert('Save failed'); }
-    });
-}
 
-// --- E-Commerce Configurations ---
-async function loadEcommerceConfigs() {
-    try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE}/integrations`, {
-            headers: { 'x-auth-token': token }
-        });
-        const configs = await res.json();
-        
-        configs.forEach(c => {
-            if (c.platform === 'woocommerce' && c.woocommerce) {
-                document.getElementById('wc-site-url').value = c.woocommerce.siteUrl || '';
-                document.getElementById('wc-key').value = c.woocommerce.consumerKey || '';
-                document.getElementById('wc-secret').value = c.woocommerce.consumerSecret || '';
-            } else if (c.platform === 'jumia' && c.jumia) {
-                document.getElementById('jumia-user-id').value = c.jumia.userId || '';
-            } else if (c.platform === 'amazon' && c.amazon) {
-                document.getElementById('amazon-seller-id').value = c.amazon.sellerId || '';
-                document.getElementById('amazon-client-id').value = c.amazon.clientId || '';
-            } else if (c.platform === 'noon' && c.noon) {
-                document.getElementById('noon-email').value = c.noon.email || '';
-                document.getElementById('noon-store-code').value = c.noon.storeCode || '';
-                document.getElementById('noon-business-id').value = c.noon.businessId || '';
-                // Password is never sent back to frontend for security
+            if (res.ok) {
+                alert(lang === 'ar' ? 'تم حفظ كلمة مرور المدير بنجاح' : 'Manager security password saved successfully');
+                form.reset();
+            } else {
+                alert(lang === 'ar' ? 'فشل الحفظ' : 'Failed to save password');
             }
-        });
-    } catch (e) { console.error(e); }
-}
-
-function setupEcommerceForms() {
-    // WooCommerce
-    document.getElementById('wc-config-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        savePlatform('woocommerce', {
-            siteUrl: document.getElementById('wc-site-url').value,
-            consumerKey: document.getElementById('wc-key').value,
-            consumerSecret: document.getElementById('wc-secret').value
-        });
-    });
-
-    // Jumia
-    document.getElementById('jumia-config-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        savePlatform('jumia', {
-            userId: document.getElementById('jumia-user-id').value,
-            apiKey: document.getElementById('jumia-api-key').value
-        });
-    });
-
-    // Amazon
-    document.getElementById('amazon-config-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        savePlatform('amazon', {
-            sellerId: document.getElementById('amazon-seller-id').value,
-            clientId: document.getElementById('amazon-client-id').value,
-            clientSecret: document.getElementById('amazon-client-secret').value,
-            refreshToken: document.getElementById('amazon-refresh-token').value
-        });
-    });
-
-    // Noon Egypt
-    document.getElementById('noon-config-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const password = document.getElementById('noon-password').value;
-        const payload = {
-            email: document.getElementById('noon-email').value,
-            storeCode: document.getElementById('noon-store-code').value,
-            businessId: document.getElementById('noon-business-id').value,
-        };
-        // Only include password if user typed something
-        if (password) payload.password = password;
-        savePlatform('noon', payload);
-    });
-}
-
-async function savePlatform(platform, data) {
-    try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE}/integrations/${platform}/connect`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-auth-token': token },
-            body: JSON.stringify(data)
-        });
-        const result = await res.json();
-        if (res.ok) {
-            alert(`Successfully connected to ${platform}!`);
-        } else {
-            alert(`Connection failed: ${result.msg}`);
+        } catch (err) {
+            console.error(err);
+            alert('Error');
         }
-    } catch (e) {
-        alert(`Failed to save ${platform} config`);
-    }
+    });
 }
 
 // --- User Management ---
 async function loadUsers() {
     try {
-        const token = localStorage.getItem('token');
         const res = await fetch(`${API_BASE}/users`, {
-            headers: { 'x-auth-token': token }
+            headers: { 'x-auth-token': getToken() }
         });
         const users = await res.json();
         const body = document.getElementById('user-table-body');
-        body.innerHTML = users.map(u => `
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 font-bold text-brand-dark">${u.username}</td>
-                <td class="px-6 py-4">${u.fullName || '-'}</td>
-                <td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase bg-gray-100">${u.role}</span></td>
-                <td class="px-6 py-4 text-right">
-                    <button onclick="deleteUser('${u.id}')" class="text-brand-red hover:text-red-700"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>
-        `).join('');
+        if (body) {
+            body.innerHTML = users.map(u => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 font-bold text-brand-dark">${u.username}</td>
+                    <td class="px-6 py-4">${u.fullName || '-'}</td>
+                    <td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase bg-gray-100">${u.role}</span></td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="deleteUser('${u.id}')" class="text-brand-red hover:text-red-700"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
     } catch (e) { console.error(e); }
 }
 
 function setupUserForm() {
-    document.getElementById('user-form').addEventListener('submit', async (e) => {
+    const form = document.getElementById('user-form');
+    if (!form) return;
+
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const data = {
             username: document.getElementById('new-username').value,
@@ -215,19 +234,18 @@ function setupUserForm() {
         };
 
         try {
-            const token = localStorage.getItem('token');
             const res = await fetch(`${API_BASE}/users`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-auth-token': token },
+                headers: { 'Content-Type': 'application/json', 'x-auth-token': getToken() },
                 body: JSON.stringify(data)
             });
             if (res.ok) {
-                alert('User created');
-                document.getElementById('user-form').reset();
+                alert('User created successfully');
+                form.reset();
                 loadUsers();
             } else {
                 const r = await res.json();
-                alert(r.msg);
+                alert(r.msg || 'Failed to create user');
             }
         } catch (e) { alert('Failed'); }
     });
@@ -236,10 +254,9 @@ function setupUserForm() {
 window.deleteUser = async (id) => {
     if (!confirm('Delete this user?')) return;
     try {
-        const token = localStorage.getItem('token');
         await fetch(`${API_BASE}/users/${id}`, {
             method: 'DELETE',
-            headers: { 'x-auth-token': token }
+            headers: { 'x-auth-token': getToken() }
         });
         loadUsers();
     } catch (e) { console.error(e); }
@@ -248,19 +265,20 @@ window.deleteUser = async (id) => {
 // --- Audit Logs ---
 async function loadAuditLogs() {
     try {
-        const token = localStorage.getItem('token');
         const res = await fetch(`${API_BASE}/audit-logs`, {
-            headers: { 'x-auth-token': token }
+            headers: { 'x-auth-token': getToken() }
         });
         const logs = await res.json();
         const body = document.getElementById('auditLogsBody');
-        body.innerHTML = logs.map(l => `
-            <tr class="text-xs">
-                <td class="px-6 py-3 text-gray-400">${new Date(l.timestamp).toLocaleString()}</td>
-                <td class="px-6 py-3 font-bold text-brand-dark">${l.user}</td>
-                <td class="px-6 py-3"><span class="text-brand-blue font-medium">${l.action}</span></td>
-                <td class="px-6 py-3 text-gray-600 truncate max-w-xs">${l.details || '-'}</td>
-            </tr>
-        `).join('');
+        if (body) {
+            body.innerHTML = logs.map(l => `
+                <tr class="text-xs">
+                    <td class="px-6 py-3 text-gray-400">${new Date(l.timestamp).toLocaleString()}</td>
+                    <td class="px-6 py-3 font-bold text-brand-dark">${l.user}</td>
+                    <td class="px-6 py-3"><span class="text-brand-blue font-medium">${l.action}</span></td>
+                    <td class="px-6 py-3 text-gray-600 truncate max-w-xs">${JSON.stringify(l.details || '-')}</td>
+                </tr>
+            `).join('');
+        }
     } catch (e) { console.error(e); }
 }

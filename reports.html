@@ -9,53 +9,331 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link rel="stylesheet" href="css/tailwind.css">
   <link rel="stylesheet" href="css/components.css">
+  <style>
+    .report-panel { display: none; }
+    .report-panel.active { display: block; }
+    .tab-btn.active {
+      background: var(--brand-blue) !important;
+      color: #fff !important;
+    }
+  </style>
 </head>
 <body class="bg-brand-gray-light font-sans text-brand-dark h-screen overflow-hidden flex flex-col m-0 p-0 antialiased">
   <div class="flex h-screen w-full overflow-hidden">
+    <!-- Sidebar -->
     <aside class="w-64 bg-gradient-to-b from-brand-dark-2 to-brand-dark text-white flex flex-col shadow-2xl shrink-0 z-20">
       <div class="sidebar-header"><h2 data-i18n="app_title">🏪 Tashgheel POS</h2><p data-i18n="enhanced_edition">Enterprise Edition</p></div>
-      <nav class="flex-1 overflow-y-auto py-4">
+            <nav class="flex-1 overflow-y-auto py-4">
         <a href="pos.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_pos">🛒 Point of Sale</a>
         <a href="products.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_products">📦 Products</a>
         <a href="inventory.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_inventory">📊 Inventory</a>
+        <a href="stock-transfer.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stock_transfer">🔄 Stock Transfer</a>
+        <a href="price-list.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_price_list">💰 Price List</a>
         <a href="purchases.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_purchases">📥 Purchases</a>
         <a href="receipts.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_receipts">🧾 Receipts</a>
         <a href="reports.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-brand-blue bg-white/10 text-white" data-i18n="nav_reports">📈 Reports</a>
         <a href="suppliers.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_suppliers">🏢 Suppliers</a>
         <a href="customers.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_customers">👥 Customers</a>
+        <a href="open-orders.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_open_orders">📝 Open Orders</a>
         <a href="salesmen.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_salesmen">🧑‍💼 Salesmen</a>
         <a href="expenses.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_expenses">📋 Expenses</a>
         <a href="stores.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stores">🏢 Warehouses</a>
         <a href="admin.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_admin">⚙️ Admin Panel</a>
-        <a href="ecommerce.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white">🌐 E-Commerce</a>
         <a href="backup.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_backup">💾 Backup</a>
       </nav>
       <div class="sidebar-footer"><button class="btn btn-danger" onclick="confirmLogout()" data-i18n="logout">Logout</button></div>
     </aside>
+
+    <!-- Main Content -->
     <main class="flex-1 flex flex-col min-h-0 overflow-hidden bg-brand-gray-light">
       <header class="bg-white/80 backdrop-blur-md px-8 py-4 shadow-sm border-b border-gray-200 flex justify-between items-center z-10 sticky top-0">
         <h1 class="text-xl font-bold text-brand-dark" data-i18n="nav_reports">📈 Reports</h1>
-        <div style="display:flex;align-items:center;gap:10px;"><span id="welcomeText" data-i18n="welcome">Welcome,</span><span id="currentUserName" class="font-semibold">User</span></div>
-      </header>
-      <section class="flex-1 overflow-y-auto min-h-0 p-6 lg:p-8 flex flex-col gap-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div class="stat-card blue"><h3 id="totalSales">0.00</h3><p data-i18n="total_sales">Total Sales</p></div>
-          <div class="stat-card green"><h3 id="totalProfit">0.00</h3><p data-i18n="total_profit">Total Profit</p></div>
-          <div class="stat-card orange"><h3 id="totalExpenses">0.00</h3><p data-i18n="total_expenses">Total Expenses</p></div>
-          <div class="stat-card purple"><h3 id="netProfit">0.00</h3><p data-i18n="net_profit">Net Profit</p></div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span id="welcomeText" data-i18n="welcome">Welcome,</span>
+          <span id="currentUserName" class="font-semibold">User</span>
         </div>
-        <div class="bg-white rounded-2xl shadow-premium border border-gray-100 p-6">
-          <div class="flex justify-between items-center mb-6">
-            <h2 class="text-base font-bold text-brand-dark" data-i18n="sales_report">Sales Report</h2>
-            <div class="flex items-center gap-3">
-              <input type="date" id="report-from" class="rounded-lg border-gray-300 px-3 py-2 text-sm shadow-sm">
-              <span class="text-gray-400">to</span>
-              <input type="date" id="report-to" class="rounded-lg border-gray-300 px-3 py-2 text-sm shadow-sm">
-              <button onclick="generateReport()" class="btn btn-primary px-6" data-i18n="generate">Generate</button>
+      </header>
+
+      <!-- Scrollable Container -->
+      <section class="flex-1 overflow-y-auto min-h-0 p-6 lg:p-8 flex flex-col gap-6">
+        
+        <!-- Tab Navigation Buttons -->
+        <div class="flex flex-wrap gap-2 border-b border-gray-200 pb-4 shrink-0">
+          <button class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg bg-white shadow-sm border border-gray-200 text-gray-700 active" onclick="switchReportTab('sales')" id="tab-sales" data-i18n="nav_reports_sales">Sales Report</button>
+          <button class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg bg-white shadow-sm border border-gray-200 text-gray-700" onclick="switchReportTab('ar-aging')" id="tab-ar-aging" data-i18n="report_ar_aging">AR Aging</button>
+          <button class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg bg-white shadow-sm border border-gray-200 text-gray-700" onclick="switchReportTab('discounts')" id="tab-discounts" data-i18n="report_discounts">Discounts</button>
+          <button class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg bg-white shadow-sm border border-gray-200 text-gray-700" onclick="switchReportTab('returns')" id="tab-returns" data-i18n="report_returns">Returns</button>
+          <button class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg bg-white shadow-sm border border-gray-200 text-gray-700" onclick="switchReportTab('inv-adj')" id="tab-inv-adj" data-i18n="report_inv_adj">Inventory Adjustments</button>
+          <button class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg bg-white shadow-sm border border-gray-200 text-gray-700" onclick="switchReportTab('supplier-balances')" id="tab-supplier-balances" data-i18n="report_supplier_balances">Supplier Balances</button>
+          <button class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg bg-white shadow-sm border border-gray-200 text-gray-700" onclick="switchReportTab('customer-balances')" id="tab-customer-balances" data-i18n="report_customer_balances">Customer Balances</button>
+          <button class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg bg-white shadow-sm border border-gray-200 text-gray-700" onclick="switchReportTab('purchases')" id="tab-purchases" data-i18n="report_purchases">Purchases Report</button>
+        </div>
+
+        <!-- ─────────────────────────────────────────────
+             TAB 1: Sales Report (Existing)
+             ───────────────────────────────────────────── -->
+        <div id="panel-sales" class="report-panel active flex flex-col gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="stat-card blue"><h3 id="totalSales">0.00</h3><p data-i18n="total_sales">Total Sales</p></div>
+            <div class="stat-card green"><h3 id="totalProfit">0.00</h3><p data-i18n="total_profit">Total Profit</p></div>
+            <div class="stat-card orange"><h3 id="totalExpenses">0.00</h3><p data-i18n="total_expenses">Total Expenses</p></div>
+            <div class="stat-card purple"><h3 id="netProfit">0.00</h3><p data-i18n="net_profit">Net Profit</p></div>
+          </div>
+          <div class="bg-white rounded-2xl shadow-premium border border-gray-100 p-6">
+            <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+              <h2 class="text-base font-bold text-brand-dark" data-i18n="sales_report">Sales Report</h2>
+              <div class="flex items-center gap-3">
+                <input type="date" id="sales-from" class="rounded-lg border-gray-300 px-3 py-2 text-sm shadow-sm">
+                <span class="text-gray-400">to</span>
+                <input type="date" id="sales-to" class="rounded-lg border-gray-300 px-3 py-2 text-sm shadow-sm">
+                <button onclick="runSalesReport()" class="btn btn-primary px-6" data-i18n="filter">Filter</button>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="data-table w-full">
+                <thead>
+                  <tr>
+                    <th data-i18n="date">Date</th>
+                    <th data-i18n="receipt_id">Receipt #</th>
+                    <th>Type</th>
+                    <th data-i18n="total">Total Sales</th>
+                    <th data-i18n="profit">Profit</th>
+                  </tr>
+                </thead>
+                <tbody id="sales-table-body"></tbody>
+              </table>
             </div>
           </div>
-          <div class="overflow-x-auto"><table class="data-table w-full"><thead><tr><th data-i18n="date">Date</th><th data-i18n="receipt_id">Receipt #</th><th>Type</th><th>Platform</th><th data-i18n="total">Total Sales</th><th data-i18n="profit">Profit</th></tr></thead><tbody id="reports-table-body"></tbody></table></div>
         </div>
+
+        <!-- ─────────────────────────────────────────────
+             TAB 2: AR Aging
+             ───────────────────────────────────────────── -->
+        <div id="panel-ar-aging" class="report-panel flex flex-col gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="stat-card blue"><h3 id="aging-0-10">0.00</h3><p>0 - 10 Days</p></div>
+            <div class="stat-card green"><h3 id="aging-11-30">0.00</h3><p>11 - 30 Days</p></div>
+            <div class="stat-card orange"><h3 id="aging-31-60">0.00</h3><p>31 - 60 Days</p></div>
+            <div class="stat-card purple"><h3 id="aging-60">0.00</h3><p>60+ Days</p></div>
+          </div>
+          <div class="bg-white rounded-2xl shadow-premium border border-gray-100 p-6">
+            <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+              <h2 class="text-base font-bold text-brand-dark" data-i18n="report_ar_aging">AR Aging Report</h2>
+              <button onclick="runArAgingReport()" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Refresh</button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="data-table w-full">
+                <thead>
+                  <tr>
+                    <th data-i18n="customer">Customer</th>
+                    <th data-i18n="phone">Phone</th>
+                    <th data-i18n="remaining_balance">Outstanding Balance</th>
+                    <th>Aging Category</th>
+                  </tr>
+                </thead>
+                <tbody id="ar-aging-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────────
+             TAB 3: Discounts Report
+             ───────────────────────────────────────────── -->
+        <div id="panel-discounts" class="report-panel flex flex-col gap-6">
+          <div class="bg-white rounded-2xl shadow-premium border border-gray-100 p-6">
+            <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+              <h2 class="text-base font-bold text-brand-dark" data-i18n="report_discounts">Discounts Given Report</h2>
+              <div class="flex flex-wrap items-center gap-3">
+                <input type="date" id="discounts-from" class="rounded-lg border-gray-300 px-3 py-2 text-sm shadow-sm">
+                <span class="text-gray-400">to</span>
+                <input type="date" id="discounts-to" class="rounded-lg border-gray-300 px-3 py-2 text-sm shadow-sm">
+                <select id="discounts-store" style="padding:6px;border-radius:6px;border:1px solid #ccc;font-size:0.85rem">
+                  <option value="">All Stores</option>
+                </select>
+                <button onclick="runDiscountsReport()" class="btn btn-primary px-6" data-i18n="filter">Filter</button>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="data-table w-full">
+                <thead>
+                  <tr>
+                    <th data-i18n="seller">Cashier / Employee</th>
+                    <th data-i18n="invoice_id">Invoices Count</th>
+                    <th data-i18n="discount">Total Discount Given</th>
+                  </tr>
+                </thead>
+                <tbody id="discounts-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────────
+             TAB 4: Returns Report
+             ───────────────────────────────────────────── -->
+        <div id="panel-returns" class="report-panel flex flex-col gap-6">
+          <div class="bg-white rounded-2xl shadow-premium border border-gray-100 p-6">
+            <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+              <h2 class="text-base font-bold text-brand-dark" data-i18n="report_returns">Product Returns Report</h2>
+              <div class="flex flex-wrap items-center gap-3">
+                <input type="date" id="returns-from" class="rounded-lg border-gray-300 px-3 py-2 text-sm shadow-sm">
+                <span class="text-gray-400">to</span>
+                <input type="date" id="returns-to" class="rounded-lg border-gray-300 px-3 py-2 text-sm shadow-sm">
+                <input type="text" id="returns-code" placeholder="Product Code / Barcode" style="padding:6px 12px;border:1px solid #ccc;border-radius:6px;font-size:0.85rem">
+                <button onclick="runReturnsReport()" class="btn btn-primary px-6" data-i18n="filter">Filter</button>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="data-table w-full">
+                <thead>
+                  <tr>
+                    <th data-i18n="date">Return Date</th>
+                    <th data-i18n="receipt_id">Receipt #</th>
+                    <th data-i18n="seller">Cashier</th>
+                    <th>Product Name</th>
+                    <th>Qty</th>
+                    <th>Refund Amount</th>
+                    <th data-i18n="notes">Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="returns-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────────
+             TAB 5: Inventory Adjustments
+             ───────────────────────────────────────────── -->
+        <div id="panel-inv-adj" class="report-panel flex flex-col gap-6">
+          <div class="bg-white rounded-2xl shadow-premium border border-gray-100 p-6">
+            <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+              <h2 class="text-base font-bold text-brand-dark" data-i18n="report_inv_adj">Inventory Adjustments</h2>
+              <div class="flex flex-wrap items-center gap-3">
+                <input type="date" id="inv-adj-from" class="rounded-lg border-gray-300 px-3 py-2 text-sm shadow-sm">
+                <span class="text-gray-400">to</span>
+                <input type="date" id="inv-adj-to" class="rounded-lg border-gray-300 px-3 py-2 text-sm shadow-sm">
+                <select id="inv-adj-store" style="padding:6px;border-radius:6px;border:1px solid #ccc;font-size:0.85rem">
+                  <option value="">All Warehouses</option>
+                </select>
+                <button onclick="runInvAdjReport()" class="btn btn-primary px-6" data-i18n="filter">Filter</button>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="data-table w-full">
+                <thead>
+                  <tr>
+                    <th data-i18n="date">Adjustment Date</th>
+                    <th data-i18n="received_by">Adjusted By</th>
+                    <th data-i18n="items">Adjusted Items Detail</th>
+                  </tr>
+                </thead>
+                <tbody id="inv-adj-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────────
+             TAB 6: Supplier Balances
+             ───────────────────────────────────────────── -->
+        <div id="panel-supplier-balances" class="report-panel flex flex-col gap-6">
+          <div class="bg-white rounded-2xl shadow-premium border border-gray-100 p-6">
+            <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+              <h2 class="text-base font-bold text-brand-dark" data-i18n="report_supplier_balances">Supplier Outstanding Debt</h2>
+              <span id="supplierTotalOwed" style="font-weight:700;color:var(--red);">Total Owed: 0.00 EGP</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="data-table w-full">
+                <thead>
+                  <tr>
+                    <th data-i18n="nav_suppliers">Supplier Name</th>
+                    <th data-i18n="phone">Phone</th>
+                    <th data-i18n="remaining_balance">Outstanding Debt (EGP)</th>
+                  </tr>
+                </thead>
+                <tbody id="supplier-balances-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────────
+             TAB 7: Customer Balances
+             ───────────────────────────────────────────── -->
+        <div id="panel-customer-balances" class="report-panel flex flex-col gap-6">
+          <div class="bg-white rounded-2xl shadow-premium border border-gray-100 p-6">
+            <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+              <h2 class="text-base font-bold text-brand-dark" data-i18n="report_customer_balances">Customer Credit Balances</h2>
+              <span id="customerTotalOwed" style="font-weight:700;color:var(--brand-blue);">Total Outstanding: 0.00 EGP</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="data-table w-full">
+                <thead>
+                  <tr>
+                    <th data-i18n="customer">Customer Name</th>
+                    <th data-i18n="phone">Phone</th>
+                    <th data-i18n="remaining_balance">Credit / Debt Balance (EGP)</th>
+                  </tr>
+                </thead>
+                <tbody id="customer-balances-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────────
+             TAB 8: Purchases Report
+             ───────────────────────────────────────────── -->
+        <div id="panel-purchases" class="report-panel flex flex-col gap-6">
+          <div class="bg-white rounded-2xl shadow-premium border border-gray-100 p-6 mb-6">
+            <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+              <h2 class="text-base font-bold text-brand-dark" data-i18n="report_purchases">Supplier Purchases Report</h2>
+              <div class="flex flex-wrap items-center gap-3">
+                <input type="date" id="purchases-from" class="rounded-lg border-gray-300 px-3 py-2 text-sm shadow-sm">
+                <span class="text-gray-400">to</span>
+                <input type="date" id="purchases-to" class="rounded-lg border-gray-300 px-3 py-2 text-sm shadow-sm">
+                <select id="purchases-supplier" style="padding:6px;border-radius:6px;border:1px solid #ccc;font-size:0.85rem">
+                  <option value="">All Suppliers</option>
+                </select>
+                <button onclick="runPurchasesReport()" class="btn btn-primary px-6" data-i18n="filter">Filter</button>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="data-table w-full">
+                <thead>
+                  <tr>
+                    <th data-i18n="date">Purchase Date</th>
+                    <th data-i18n="receipt_id">Receipt #</th>
+                    <th data-i18n="nav_suppliers">Supplier</th>
+                    <th data-i18n="total">Total Cost</th>
+                    <th data-i18n="cash_paid">Paid</th>
+                    <th data-i18n="items">Items Count</th>
+                  </tr>
+                </thead>
+                <tbody id="purchases-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl shadow-premium border border-gray-100 p-6">
+            <h3 class="text-base font-bold text-brand-dark mb-4">Supplier Purchases Breakdown</h3>
+            <div class="overflow-x-auto">
+              <table class="data-table w-full">
+                <thead>
+                  <tr>
+                    <th data-i18n="nav_suppliers">Supplier</th>
+                    <th data-i18n="invoice_id">Purchases Count</th>
+                    <th data-i18n="total">Total Purchased (EGP)</th>
+                  </tr>
+                </thead>
+                <tbody id="purchases-breakdown-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
       </section>
     </main>
   </div>

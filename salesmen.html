@@ -12,48 +12,154 @@
 </head>
 <body class="bg-brand-gray-light font-sans text-brand-dark h-screen overflow-hidden flex flex-col m-0 p-0 antialiased">
   <div class="flex h-screen w-full overflow-hidden">
+    <!-- Sidebar -->
     <aside class="w-64 bg-gradient-to-b from-brand-dark-2 to-brand-dark text-white flex flex-col shadow-2xl shrink-0 z-20">
       <div class="sidebar-header"><h2 data-i18n="app_title">🏪 Tashgheel POS</h2><p data-i18n="enhanced_edition">Enterprise Edition</p></div>
-      <nav class="flex-1 overflow-y-auto py-4">
+            <nav class="flex-1 overflow-y-auto py-4">
         <a href="pos.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_pos">🛒 Point of Sale</a>
         <a href="products.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_products">📦 Products</a>
         <a href="inventory.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_inventory">📊 Inventory</a>
+        <a href="stock-transfer.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stock_transfer">🔄 Stock Transfer</a>
+        <a href="price-list.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_price_list">💰 Price List</a>
         <a href="purchases.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_purchases">📥 Purchases</a>
         <a href="receipts.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_receipts">🧾 Receipts</a>
         <a href="reports.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_reports">📈 Reports</a>
         <a href="suppliers.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_suppliers">🏢 Suppliers</a>
         <a href="customers.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_customers">👥 Customers</a>
+        <a href="open-orders.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_open_orders">📝 Open Orders</a>
         <a href="salesmen.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-brand-blue bg-white/10 text-white" data-i18n="nav_salesmen">🧑‍💼 Salesmen</a>
         <a href="expenses.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_expenses">📋 Expenses</a>
         <a href="stores.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stores">🏢 Warehouses</a>
         <a href="admin.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_admin">⚙️ Admin Panel</a>
-        <a href="ecommerce.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white">🌐 E-Commerce</a>
         <a href="backup.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_backup">💾 Backup</a>
       </nav>
       <div class="sidebar-footer"><button class="btn btn-danger" onclick="confirmLogout()" data-i18n="logout">Logout</button></div>
     </aside>
+
+    <!-- Main Content -->
     <main class="flex-1 flex flex-col min-h-0 overflow-hidden bg-brand-gray-light">
       <header class="bg-white/80 backdrop-blur-md px-8 py-4 shadow-sm border-b border-gray-200 flex justify-between items-center z-10 sticky top-0">
-        <h1 class="text-xl font-bold text-brand-dark" data-i18n="nav_salesmen">🧑‍💼 Salesmen</h1>
-        <div style="display:flex;align-items:center;gap:10px;"><span id="welcomeText" data-i18n="welcome">Welcome,</span><span id="currentUserName" class="font-semibold">User</span></div>
+        <h1 class="text-xl font-bold text-brand-dark" data-i18n="nav_salesmen">🧑‍💼 Salesmen / Employees</h1>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span id="welcomeText" data-i18n="welcome">Welcome,</span>
+          <span id="currentUserName" class="font-semibold">User</span>
+        </div>
       </header>
+
       <section class="flex-1 overflow-y-auto min-h-0 p-6 lg:p-8 flex flex-col gap-6">
+        <!-- Add/Edit Salesman Form -->
         <div class="bg-white rounded-2xl shadow-premium border border-gray-100 overflow-hidden">
-          <div class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-brand-blue to-brand-purple"><h2 class="text-base font-semibold text-white" data-i18n="add_salesman">Add Salesman</h2></div>
+          <div class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-brand-blue to-brand-purple">
+            <h2 class="text-base font-semibold text-white" id="form-title" data-i18n="add_salesman">Add Salesman / Employee</h2>
+          </div>
           <div class="p-6">
             <form id="salesman-form" class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
               <input type="hidden" id="salesman-id">
-              <div class="form-group"><label data-i18n="name">Name</label><input type="text" id="salesman-name" required></div>
-              <div class="form-group"><label data-i18n="phone">Phone</label><input type="text" id="salesman-phone" required></div>
-              <div class="form-group"><label data-i18n="commission">Commission (%)</label><input type="number" id="salesman-commission" step="0.1" min="0"></div>
+              <div class="form-group">
+                <label data-i18n="name">Name</label>
+                <input type="text" id="salesman-name" required>
+              </div>
+              <div class="form-group">
+                <label data-i18n="job_title">Job Title</label>
+                <input type="text" id="salesman-jobtitle">
+              </div>
+              <div class="form-group">
+                <label data-i18n="phone">Phone</label>
+                <input type="text" id="salesman-phone">
+              </div>
               <div class="flex gap-2">
-                <button type="submit" class="btn btn-primary flex-1" data-i18n="save">Save</button>
+                <button type="submit" class="btn btn-primary flex-1" id="saveBtn" data-i18n="save">Save</button>
                 <button type="button" onclick="resetForm()" class="btn btn-secondary" data-i18n="cancel">Cancel</button>
               </div>
             </form>
           </div>
         </div>
-        <div class="bg-white rounded-2xl shadow-premium border border-gray-100 overflow-hidden"><div class="overflow-x-auto"><table class="data-table w-full"><thead><tr><th data-i18n="name">Name</th><th data-i18n="phone">Phone</th><th data-i18n="commission">Commission (%)</th><th data-i18n="actions">Actions</th></tr></thead><tbody id="salesmen-body"></tbody></table></div></div>
+
+        <!-- Salesmen Table -->
+        <div class="bg-white rounded-2xl shadow-premium border border-gray-100 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="data-table w-full">
+              <thead>
+                <tr>
+                  <th data-i18n="name">Name</th>
+                  <th data-i18n="job_title">Job Title</th>
+                  <th data-i18n="phone">Phone</th>
+                  <th data-i18n="actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="salesmen-body">
+                <tr>
+                  <td colspan="4" style="text-align:center;padding:20px;color:var(--text-3);">
+                    <i class="fas fa-spinner fa-spin"></i> Loading...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Monthly Targets Section -->
+        <div class="bg-white rounded-2xl shadow-premium border border-gray-100 overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-brand-blue to-brand-purple">
+            <h2 class="text-base font-semibold text-white" data-i18n="salesmen_targets">Set Monthly Sales Target</h2>
+          </div>
+          <div class="p-6">
+            <form id="target-form" class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+              <div class="form-group">
+                <label data-i18n="nav_salesmen">Salesman</label>
+                <select id="target-salesman" required></select>
+              </div>
+              <div class="form-group">
+                <label data-i18n="month">Month</label>
+                <select id="target-month" required></select>
+              </div>
+              <div class="form-group">
+                <label data-i18n="year">Year</label>
+                <select id="target-year" required></select>
+              </div>
+              <div class="form-group">
+                <label data-i18n="target_value">Target Value (EGP)</label>
+                <input type="number" id="target-value" step="1" required>
+              </div>
+              <div class="flex gap-2">
+                <button type="submit" class="btn btn-primary flex-1" data-i18n="save">Set Target</button>
+              </div>
+            </form>
+          </div>
+          <div class="overflow-x-auto border-t border-gray-100">
+            <table class="data-table w-full">
+              <thead>
+                <tr>
+                  <th data-i18n="name">Salesman</th>
+                  <th data-i18n="month">Month</th>
+                  <th data-i18n="year">Year</th>
+                  <th data-i18n="target_value">Target</th>
+                </tr>
+              </thead>
+              <tbody id="monthly-targets-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Salesmen Performance Report -->
+        <div class="bg-white rounded-2xl shadow-premium border border-gray-100 overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-100">
+            <h2 class="text-base font-semibold text-brand-dark" data-i18n="performance">📈 Employee Performance (This Month)</h2>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="data-table w-full">
+              <thead>
+                <tr>
+                  <th data-i18n="name">Salesman</th>
+                  <th data-i18n="sales">Actual Sales (EGP)</th>
+                  <th data-i18n="target_value">Target (EGP)</th>
+                  <th data-i18n="progress">Progress</th>
+                </tr>
+              </thead>
+              <tbody id="salesmen-performance-body"></tbody>
+            </table>
+          </div>
+        </div>
       </section>
     </main>
   </div>

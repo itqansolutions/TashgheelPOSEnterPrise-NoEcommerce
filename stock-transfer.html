@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" href="favicon.png">
-  <title>Warehouses - Tashgheel POS</title>
+  <title>Stock Transfer - Tashgheel POS</title>
   <link rel="stylesheet" href="css/styles.css?v=8.0">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link rel="stylesheet" href="css/tailwind.css">
@@ -19,7 +19,7 @@
         <a href="pos.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_pos">🛒 Point of Sale</a>
         <a href="products.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_products">📦 Products</a>
         <a href="inventory.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_inventory">📊 Inventory</a>
-        <a href="stock-transfer.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stock_transfer">🔄 Stock Transfer</a>
+        <a href="stock-transfer.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-brand-blue bg-white/10 text-white" data-i18n="nav_stock_transfer">🔄 Stock Transfer</a>
         <a href="price-list.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_price_list">💰 Price List</a>
         <a href="purchases.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_purchases">📥 Purchases</a>
         <a href="receipts.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_receipts">🧾 Receipts</a>
@@ -29,7 +29,7 @@
         <a href="open-orders.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_open_orders">📝 Open Orders</a>
         <a href="salesmen.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_salesmen">🧑‍💼 Salesmen</a>
         <a href="expenses.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_expenses">📋 Expenses</a>
-        <a href="stores.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-brand-blue bg-white/10 text-white" data-i18n="nav_stores">🏢 Warehouses</a>
+        <a href="stores.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stores">🏢 Warehouses</a>
         <a href="admin.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_admin">⚙️ Admin Panel</a>
         <a href="backup.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_backup">💾 Backup</a>
       </nav>
@@ -38,70 +38,131 @@
 
     <!-- Main Content -->
     <main class="flex-1 flex flex-col min-h-0 overflow-hidden bg-brand-gray-light">
+      <!-- Header -->
       <header class="bg-white/80 backdrop-blur-md px-8 py-4 shadow-sm border-b border-gray-200 flex justify-between items-center z-10 sticky top-0">
-        <h1 class="text-xl font-bold text-brand-dark" data-i18n="nav_stores">🏢 Warehouses</h1>
+        <h1 class="text-xl font-bold text-brand-dark" data-i18n="stock_transfer_title">🔄 Stock Transfer</h1>
         <div style="display:flex;align-items:center;gap:10px;">
           <span id="welcomeText" data-i18n="welcome">Welcome,</span>
           <span id="currentUserName" class="font-semibold">User</span>
         </div>
       </header>
 
+      <!-- Content -->
       <section class="flex-1 overflow-y-auto min-h-0 p-6 lg:p-8 flex flex-col gap-6">
-        <!-- Add/Edit Store Form -->
+
+        <!-- Transfer Form Card -->
         <div class="bg-white rounded-2xl shadow-premium border border-gray-100 overflow-hidden">
           <div class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-brand-blue to-brand-purple">
-            <h2 class="text-base font-semibold text-white" id="form-title" data-i18n="add_warehouse">Add Warehouse</h2>
+            <h2 class="text-base font-semibold text-white" data-i18n="stock_transfer_title">🔄 New Stock Transfer</h2>
           </div>
           <div class="p-6">
-            <form id="store-form" class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
-              <input type="hidden" id="store-id">
-              <div class="form-group">
-                <label data-i18n="name">Name</label>
-                <input type="text" id="store-name" required>
+            <!-- Warehouse Selectors -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div class="form-group" style="margin-bottom:0">
+                <label data-i18n="from_store">📤 From Warehouse</label>
+                <select id="fromStore">
+                  <option value="" data-i18n="select_store">Select Warehouse</option>
+                </select>
               </div>
-              <div class="form-group">
-                <label data-i18n="address">Address</label>
-                <input type="text" id="store-address">
+              <div class="form-group" style="margin-bottom:0">
+                <label data-i18n="to_store">📥 To Warehouse</label>
+                <select id="toStore">
+                  <option value="" data-i18n="select_store">Select Warehouse</option>
+                </select>
               </div>
-              <div class="form-group">
-                <label data-i18n="store_phone">Phone</label>
-                <input type="text" id="store-phone">
+            </div>
+
+            <!-- Product Search Autocomplete -->
+            <div class="form-group mb-6" style="position:relative">
+              <label data-i18n="add_items">Add Product</label>
+              <input type="text" id="productSearch" class="search-box" placeholder="Search product by name or barcode..." autocomplete="off">
+              <div id="productSuggestions" style="
+                position:absolute;top:100%;left:0;right:0;z-index:200;
+                background:#fff;border:1.5px solid var(--blue);
+                border-top:none;border-radius:0 0 var(--r-md) var(--r-md);
+                box-shadow:var(--shadow-md);max-height:220px;overflow-y:auto;
+                display:none;
+              "></div>
+            </div>
+
+            <!-- Transfer Items Table -->
+            <div id="transfer-items-section" style="display:none;margin-bottom:24px;">
+              <label style="font-size:0.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:8px;" data-i18n="transfer_items">Transfer Items</label>
+              <div class="overflow-x-auto" style="border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden">
+                <table class="data-table w-full">
+                  <thead>
+                    <tr>
+                      <th data-i18n="product_name">Product</th>
+                      <th data-i18n="stock">Available Stock</th>
+                      <th data-i18n="qty_return">Qty to Transfer</th>
+                      <th data-i18n="actions">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="transfer-items-body"></tbody>
+                </table>
               </div>
-              <div class="flex gap-2">
-                <button type="submit" class="btn btn-primary flex-1" id="saveBtn" data-i18n="save">Save</button>
-                <button type="button" onclick="resetForm()" class="btn btn-secondary" data-i18n="cancel">Cancel</button>
-              </div>
-            </form>
+            </div>
+
+            <!-- Notes -->
+            <div class="form-group mb-6">
+              <label data-i18n="notes">Notes</label>
+              <textarea id="transferNotes" rows="3" placeholder="Optional transfer notes..."></textarea>
+            </div>
+
+            <!-- Submit -->
+            <button class="btn btn-primary" style="min-width:180px" onclick="submitTransfer()" id="submitTransferBtn" data-i18n="submit_transfer">
+              <i class="fas fa-paper-plane"></i> Submit Transfer
+            </button>
           </div>
         </div>
 
-        <!-- Stores List Table -->
+        <!-- Transfer History -->
         <div class="bg-white rounded-2xl shadow-premium border border-gray-100 overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+            <h2 class="text-base font-semibold" data-i18n="transfer_history">📜 Transfer History</h2>
+            <button class="btn btn-secondary" onclick="loadHistory()" style="padding:6px 14px;font-size:0.78rem">
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
           <div class="overflow-x-auto">
             <table class="data-table w-full">
               <thead>
                 <tr>
-                  <th data-i18n="name">Name</th>
-                  <th data-i18n="address">Address</th>
-                  <th data-i18n="store_phone">Phone</th>
-                  <th data-i18n="actions">Actions</th>
+                  <th data-i18n="date">Date</th>
+                  <th data-i18n="from_store">From</th>
+                  <th data-i18n="to_store">To</th>
+                  <th data-i18n="items">Items Count</th>
+                  <th data-i18n="received_by">Done By</th>
+                  <th data-i18n="notes">Notes</th>
                 </tr>
               </thead>
-              <tbody id="stores-body">
-                <tr>
-                  <td colspan="4" style="text-align:center;padding:20px;color:var(--text-3);">
-                    <i class="fas fa-spinner fa-spin"></i> Loading...
-                  </td>
-                </tr>
+              <tbody id="history-body">
+                <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-3);">
+                  <i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>Loading...
+                </td></tr>
               </tbody>
             </table>
           </div>
         </div>
+
       </section>
     </main>
   </div>
+
+  <!-- Toast -->
+  <div id="toast" style="
+    position:fixed;bottom:24px;right:24px;z-index:9999;
+    background:#10b981;color:#fff;padding:12px 20px;
+    border-radius:10px;font-size:0.85rem;font-weight:600;
+    box-shadow:0 8px 24px rgba(16,185,129,0.35);
+    display:none;align-items:center;gap:8px;
+  ">
+    <i class="fas fa-check-circle"></i>
+    <span id="toast-msg">Done!</span>
+  </div>
+
   <script src="js/auth.js"></script>
   <script src="js/translations.js"></script>
-  <script src="js/stores-app.js"></script>
+  <script src="js/stock-transfer-app.js"></script>
 </body>
 </html>

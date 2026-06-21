@@ -23,6 +23,12 @@ router.get('/stores', auth, async (req, res) => {
 // @route   POST /api/stores
 router.post('/stores', auth, async (req, res) => {
     try {
+        // Enforce plan branch limit
+        const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
+        const branchCount = await prisma.store.count({ where: { tenantId: req.tenantId } });
+        if (branchCount >= (tenant.maxBranches || 3)) {
+            return res.status(403).json({ msg: `Branch limit reached. Your plan allows ${tenant.maxBranches} branches.`, code: 'BRANCH_LIMIT' });
+        }
         const store = await prisma.store.create({
             data: { tenantId: req.tenantId, ...req.body }
         });
@@ -41,12 +47,13 @@ router.put('/stores/:id', auth, async (req, res) => {
         });
         if (!store) return res.status(404).json({ msg: 'Store not found' });
 
-        const { name, location } = req.body;
+        const { name, location, phone } = req.body;
         const updated = await prisma.store.update({
             where: { id: req.params.id },
             data: {
                 ...(name !== undefined && { name }),
-                ...(location !== undefined && { location })
+                ...(location !== undefined && { location }),
+                ...(phone !== undefined && { phone })
             }
         });
         res.json(updated);
@@ -235,7 +242,10 @@ router.get('/settings', auth, async (req, res) => {
             shopLogo: tenant.shopLogo,
             footerMessage: tenant.footerMessage,
             taxRate: tenant.taxRate,
-            taxName: tenant.taxName
+            taxName: tenant.taxName,
+            managerPasswordSet: !!tenant.managerPassword,
+            maxBranches: tenant.maxBranches,
+            maxUsers: tenant.maxUsers
         });
     } catch (err) {
         console.error(err.message);
@@ -249,7 +259,14 @@ router.put('/settings', auth, async (req, res) => {
         const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
         if (!tenant) return res.status(404).json({ msg: 'Tenant not found' });
 
-        const { shopName, shopAddress, shopLogo, footerMessage, taxRate, taxName } = req.body;
+        const { shopName, shopAddress, shopLogo, footerMessage, taxRate, taxName, managerPassword } = req.body;
+
+        // Hash manager password if provided
+        let hashedManagerPassword = undefined;
+        if (managerPassword && managerPassword.length >= 4) {
+            const salt = await bcrypt.genSalt(10);
+            hashedManagerPassword = await bcrypt.hash(managerPassword, salt);
+        }
 
         const updated = await prisma.tenant.update({
             where: { id: req.tenantId },
@@ -259,11 +276,12 @@ router.put('/settings', auth, async (req, res) => {
                 ...(shopLogo !== undefined && { shopLogo }),
                 ...(footerMessage !== undefined && { footerMessage }),
                 ...(taxRate !== undefined && { taxRate: parseFloat(taxRate) }),
-                ...(taxName !== undefined && { taxName })
+                ...(taxName !== undefined && { taxName }),
+                ...(hashedManagerPassword !== undefined && { managerPassword: hashedManagerPassword })
             }
         });
 
-        console.log('Saved Settings (v4-prisma):', updated);
+        console.log('Saved Settings (v4-prisma):', updated.shopName);
         res.json({
             shopName: updated.shopName,
             shopAddress: updated.shopAddress,
@@ -271,6 +289,7 @@ router.put('/settings', auth, async (req, res) => {
             footerMessage: updated.footerMessage,
             taxRate: updated.taxRate,
             taxName: updated.taxName,
+            managerPasswordSet: !!updated.managerPassword,
             _backendVersion: 'v4-prisma'
         });
     } catch (err) {
@@ -278,6 +297,7 @@ router.put('/settings', auth, async (req, res) => {
         res.status(500).send('Server Error');
     }
 });
+
 
 // ================= PRODUCTS =================
 
@@ -743,6 +763,8 @@ router.post('/salesmen', auth, async (req, res) => {
             data: {
                 tenantId: req.tenantId,
                 name: req.body.name,
+                jobTitle: req.body.jobTitle || null,
+                phone: req.body.phone || null,
                 targets: req.body.targets || []
             }
         });
@@ -765,6 +787,8 @@ router.put('/salesmen/:id', auth, async (req, res) => {
             where: { id: req.params.id },
             data: {
                 ...(req.body.name !== undefined && { name: req.body.name }),
+                ...(req.body.jobTitle !== undefined && { jobTitle: req.body.jobTitle }),
+                ...(req.body.phone !== undefined && { phone: req.body.phone }),
                 ...(req.body.targets !== undefined && { targets: req.body.targets })
             }
         });
@@ -864,7 +888,14 @@ router.get('/users', auth, async (req, res) => {
 // @route   POST /api/users
 router.post('/users', auth, async (req, res) => {
     try {
-        const { username, password, role, allowedStores, allowedPages } = req.body;
+        const { username, password, role, fullName, allowedStores, allowedPages } = req.body;
+
+        // Enforce plan user limit
+        const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
+        const userCount = await prisma.user.count({ where: { tenantId: req.tenantId } });
+        if (userCount >= (tenant.maxUsers || 10)) {
+            return res.status(403).json({ msg: `User limit reached. Your plan allows ${tenant.maxUsers} users.`, code: 'USER_LIMIT' });
+        }
 
         const existing = await prisma.user.findFirst({
             where: { username, tenantId: req.tenantId }
@@ -881,7 +912,7 @@ router.post('/users', auth, async (req, res) => {
                 tenantId: req.tenantId,
                 username,
                 passwordHash,
-                fullName: username,
+                fullName: fullName || username,
                 role,
                 allowedStores: allowedStores || [],
                 allowedPages: allowedPages || []
@@ -1561,6 +1592,119 @@ router.get('/purchases', auth, async (req, res) => {
             orderBy: { date: 'desc' }
         });
         res.json(purchases);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+// ================= MANAGER PASSWORD =================
+// POST /api/verify-manager-password
+router.post('/verify-manager-password', auth, async (req, res) => {
+    try {
+        const { password } = req.body;
+        if (!password) return res.status(400).json({ msg: 'Password required' });
+        
+        const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
+        if (!tenant || !tenant.managerPassword) {
+            return res.status(400).json({ msg: 'Manager password not configured', code: 'NO_MANAGER_PASSWORD' });
+        }
+        
+        const isMatch = await bcrypt.compare(password, tenant.managerPassword);
+        if (!isMatch) return res.status(401).json({ msg: 'Incorrect manager password', code: 'WRONG_PASSWORD' });
+        
+        res.json({ valid: true });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+// ================= PRICE LIST =================
+router.get('/price-list', auth, async (req, res) => {
+    try {
+        const { storeId, search } = req.query;
+        const products = await prisma.product.findMany({
+            where: {
+                tenantId: req.tenantId,
+                active: true,
+                ...(search && {
+                    OR: [
+                        { name: { contains: search, mode: 'insensitive' } },
+                        { barcode: { contains: search, mode: 'insensitive' } }
+                    ]
+                })
+            },
+            orderBy: { name: 'asc' }
+        });
+        
+        // If storeId filter, return only that store's stock
+        const result = products.map(p => ({
+            id: p.id,
+            name: p.name,
+            barcode: p.barcode,
+            category: p.category,
+            price: p.price,
+            cost: p.cost,
+            stock: storeId
+                ? ((Array.isArray(p.stores) ? p.stores : []).find(s => s.storeId === storeId)?.stock ?? 0)
+                : p.stock,
+            stores: p.stores,
+            hasVariants: p.hasVariants,
+            variants: p.variants,
+            minStock: p.minStock
+        }));
+        
+        res.json(result);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+// PUT /api/price-list/:id — update selling price only
+router.put('/price-list/:id', auth, async (req, res) => {
+    try {
+        const { price } = req.body;
+        if (price === undefined || isNaN(price)) return res.status(400).json({ msg: 'Valid price required' });
+        
+        const product = await prisma.product.findFirst({
+            where: { id: req.params.id, tenantId: req.tenantId }
+        });
+        if (!product) return res.status(404).json({ msg: 'Product not found' });
+        
+        const updated = await prisma.product.update({
+            where: { id: req.params.id },
+            data: { price: parseFloat(price) }
+        });
+        
+        await prisma.auditLog.create({
+            data: {
+                tenantId: req.tenantId,
+                user: req.user.username,
+                action: 'UPDATE_PRICE',
+                details: { productId: product.id, productName: product.name, oldPrice: product.price, newPrice: parseFloat(price) }
+            }
+        });
+        
+        res.json(updated);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+// ================= PLAN LIMIT HELPERS =================
+// GET /api/limits — return current usage vs plan limits
+router.get('/limits', auth, async (req, res) => {
+    try {
+        const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
+        const branchCount = await prisma.store.count({ where: { tenantId: req.tenantId } });
+        const userCount = await prisma.user.count({ where: { tenantId: req.tenantId } });
+        res.json({
+            branches: { used: branchCount, max: tenant.maxBranches },
+            users: { used: userCount, max: tenant.maxUsers }
+        });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');

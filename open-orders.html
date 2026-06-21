@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <title>Open Orders - Tashgheel POS</title>
+  <link rel="stylesheet" href="css/styles.css?v=8.0">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="css/tailwind.css">
+  <link rel="stylesheet" href="css/components.css">
+  <style>
+    .modal {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center;
+      z-index: 1000;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background: #fff; border-radius: var(--r-xl); width: 100%; max-width: 600px;
+      overflow: hidden; box-shadow: var(--shadow-2xl); animation: modalIn 0.3s ease;
+    }
+    @keyframes modalIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body class="bg-brand-gray-light font-sans text-brand-dark h-screen overflow-hidden flex flex-col m-0 p-0 antialiased">
+  <div class="flex h-screen w-full overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-gradient-to-b from-brand-dark-2 to-brand-dark text-white flex flex-col shadow-2xl shrink-0 z-20">
+      <div class="sidebar-header"><h2 data-i18n="app_title">🏪 Tashgheel POS</h2><p data-i18n="enhanced_edition">Enterprise Edition</p></div>
+            <nav class="flex-1 overflow-y-auto py-4">
+        <a href="pos.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_pos">🛒 Point of Sale</a>
+        <a href="products.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_products">📦 Products</a>
+        <a href="inventory.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_inventory">📊 Inventory</a>
+        <a href="stock-transfer.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stock_transfer">🔄 Stock Transfer</a>
+        <a href="price-list.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_price_list">💰 Price List</a>
+        <a href="purchases.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_purchases">📥 Purchases</a>
+        <a href="receipts.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_receipts">🧾 Receipts</a>
+        <a href="reports.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_reports">📈 Reports</a>
+        <a href="suppliers.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_suppliers">🏢 Suppliers</a>
+        <a href="customers.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_customers">👥 Customers</a>
+        <a href="open-orders.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-brand-blue bg-white/10 text-white" data-i18n="nav_open_orders">📝 Open Orders</a>
+        <a href="salesmen.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_salesmen">🧑‍💼 Salesmen</a>
+        <a href="expenses.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_expenses">📋 Expenses</a>
+        <a href="stores.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stores">🏢 Warehouses</a>
+        <a href="admin.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_admin">⚙️ Admin Panel</a>
+        <a href="backup.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_backup">💾 Backup</a>
+      </nav>
+      <div class="sidebar-footer"><button class="btn btn-danger" onclick="confirmLogout()" data-i18n="logout">Logout</button></div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col min-h-0 overflow-hidden bg-brand-gray-light">
+      <!-- Header -->
+      <header class="bg-white/80 backdrop-blur-md px-8 py-4 shadow-sm border-b border-gray-200 flex justify-between items-center z-10 sticky top-0">
+        <h1 class="text-xl font-bold text-brand-dark" data-i18n="open_orders_title">📝 Open Orders</h1>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span id="welcomeText" data-i18n="welcome">Welcome,</span>
+          <span id="currentUserName" class="font-semibold">User</span>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <section class="flex-1 overflow-y-auto min-h-0 p-6 lg:p-8 flex flex-col gap-6">
+
+        <!-- Top Row: Create New Order Form -->
+        <div class="bg-white rounded-2xl shadow-premium border border-gray-100 overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-brand-blue to-brand-purple flex justify-between items-center">
+            <h2 class="text-base font-semibold text-white" data-i18n="create_open_order">📝 Create Open Customer Order</h2>
+            <button class="btn btn-secondary" onclick="toggleCreateForm()" style="padding:6px 14px;font-size:0.78rem;" id="toggleFormBtn">
+              <i class="fas fa-plus"></i> <span data-i18n="show">Show</span>
+            </button>
+          </div>
+          <div class="p-6" id="create-order-form-container" style="display:none;">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div class="form-group" style="margin-bottom:0">
+                <label data-i18n="select_customer">Select Customer</label>
+                <select id="orderCustomer">
+                  <option value="" data-i18n="select_customer_placeholder">Select Customer</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label data-i18n="select_store">Select Store / Branch</label>
+                <select id="orderStore">
+                  <option value="" data-i18n="select_store_placeholder">Select Warehouse</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom:0;position:relative">
+                <label data-i18n="add_items">Add Product</label>
+                <input type="text" id="orderProductSearch" class="search-box" placeholder="Search by name or barcode..." autocomplete="off">
+                <div id="orderProductSuggestions" style="
+                  position:absolute;top:100%;left:0;right:0;z-index:200;
+                  background:#fff;border:1.5px solid var(--blue);
+                  border-top:none;border-radius:0 0 var(--r-md) var(--r-md);
+                  box-shadow:var(--shadow-md);max-height:220px;overflow-y:auto;
+                  display:none;
+                "></div>
+              </div>
+            </div>
+
+            <!-- Items Cart -->
+            <div id="cart-section" style="display:none;margin-bottom:24px;">
+              <label style="font-size:0.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:8px;" data-i18n="order_items">Order Items</label>
+              <div class="overflow-x-auto" style="border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden">
+                <table class="data-table w-full">
+                  <thead>
+                    <tr>
+                      <th data-i18n="product_name">Product</th>
+                      <th data-i18n="stock">Stock Available</th>
+                      <th data-i18n="price">Price</th>
+                      <th data-i18n="qty_return">Qty</th>
+                      <th data-i18n="total">Total</th>
+                      <th data-i18n="actions">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cart-body"></tbody>
+                </table>
+              </div>
+              <div style="text-align:right;margin-top:16px;font-size:1.1rem;font-weight:700;">
+                <span data-i18n="total">Total:</span> <span id="cart-total-amount">0.00</span>
+              </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="form-group mb-6">
+              <label data-i18n="notes">Notes</label>
+              <textarea id="orderNotes" rows="2" placeholder="Optional notes..."></textarea>
+            </div>
+
+            <button class="btn btn-primary" onclick="submitOpenOrder()" id="submitOrderBtn" data-i18n="submit">
+              Create Layaway Order
+            </button>
+          </div>
+        </div>
+
+        <!-- Active Open Orders List -->
+        <div class="bg-white rounded-2xl shadow-premium border border-gray-100 overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+            <h2 class="text-base font-semibold" data-i18n="open_orders_title">📝 Active Open Orders</h2>
+            <div class="flex gap-2">
+              <select id="statusFilter" style="padding:6px 12px;font-size:0.78rem;border:1px solid var(--border);border-radius:var(--r-md)">
+                <option value="open" data-i18n="status_open">Open</option>
+                <option value="settled" data-i18n="status_settled">Settled</option>
+                <option value="cancelled" data-i18n="status_cancelled">Cancelled</option>
+                <option value="" data-i18n="all">All</option>
+              </select>
+              <button class="btn btn-secondary" onclick="loadOrders()" style="padding:6px 14px;font-size:0.78rem">
+                <i class="fas fa-sync-alt"></i>
+              </button>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="data-table w-full">
+              <thead>
+                <tr>
+                  <th data-i18n="invoice_id">Order#</th>
+                  <th data-i18n="customer">Customer</th>
+                  <th data-i18n="date">Date</th>
+                  <th data-i18n="total">Total</th>
+                  <th data-i18n="paid">Paid</th>
+                  <th data-i18n="remaining_balance">Remaining</th>
+                  <th data-i18n="status">Status</th>
+                  <th data-i18n="actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="orders-body">
+                <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-3);">
+                  <i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>Loading...
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL: Make Payment -->
+  <div id="paymentModal" class="modal">
+    <div class="modal-content">
+      <div class="px-6 py-4 bg-gradient-to-r from-brand-blue to-brand-purple flex justify-between items-center">
+        <h3 class="text-base font-semibold text-white" data-i18n="make_payment_open">💳 Record Order Payment</h3>
+        <button onclick="closeModal('paymentModal')" class="text-white hover:text-gray-200"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="p-6">
+        <input type="hidden" id="payOrderId">
+        <div class="form-group mb-4">
+          <label data-i18n="remaining_balance">Remaining Balance:</label>
+          <div id="payRemainingText" class="font-bold text-lg text-brand-dark">0.00</div>
+        </div>
+        <div class="form-group mb-4">
+          <label data-i18n="amount">Amount to Pay:</label>
+          <input type="number" id="payAmount" step="0.01" required>
+        </div>
+        <div class="form-group mb-4">
+          <label data-i18n="payment_method">Payment Method:</label>
+          <select id="payMethod">
+            <option value="cash" data-i18n="cash">Cash</option>
+            <option value="card" data-i18n="card">Card</option>
+            <option value="mobile" data-i18n="mobile">Mobile Wallet</option>
+          </select>
+        </div>
+        <div class="form-group mb-6">
+          <label data-i18n="notes">Notes:</label>
+          <input type="text" id="payNotes" placeholder="Optional payment reference/notes">
+        </div>
+        <div class="flex justify-end gap-3">
+          <button class="btn btn-secondary" onclick="closeModal('paymentModal')" data-i18n="cancel">Cancel</button>
+          <button class="btn btn-primary" onclick="submitPayment()" data-i18n="save">Save Payment</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Order Detail & Item Modification -->
+  <div id="detailModal" class="modal">
+    <div class="modal-content" style="max-width:700px;">
+      <div class="px-6 py-4 bg-gradient-to-r from-brand-blue to-brand-purple flex justify-between items-center">
+        <h3 class="text-base font-semibold text-white" data-i18n="order_detail">📋 Order Details</h3>
+        <button onclick="closeModal('detailModal')" class="text-white hover:text-gray-200"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="p-6 overflow-y-auto" style="max-height:80vh;">
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          <div>
+            <div class="text-xs text-gray-400" data-i18n="invoice_id">Order#</div>
+            <div id="detReceiptId" class="font-bold">-</div>
+          </div>
+          <div>
+            <div class="text-xs text-gray-400" data-i18n="customer">Customer</div>
+            <div id="detCustomerName" class="font-bold">-</div>
+          </div>
+          <div>
+            <div class="text-xs text-gray-400" data-i18n="total">Total Amount</div>
+            <div id="detTotalAmount" class="font-bold">-</div>
+          </div>
+          <div>
+            <div class="text-xs text-gray-400" data-i18n="remaining_balance">Remaining</div>
+            <div id="detRemaining" class="font-bold text-brand-blue">-</div>
+          </div>
+        </div>
+
+        <!-- Add item section inside details -->
+        <div id="detAddItemsContainer" class="bg-gray-50 border border-gray-100 rounded-xl p-4 mb-6">
+          <h4 class="text-xs font-bold text-gray-500 mb-3" data-i18n="add_items">➕ Add Items to Order</h4>
+          <div style="position:relative">
+            <input type="text" id="detProductSearch" class="search-box" placeholder="Search product to add..." autocomplete="off">
+            <div id="detProductSuggestions" style="
+              position:absolute;top:100%;left:0;right:0;z-index:200;
+              background:#fff;border:1.5px solid var(--blue);
+              border-top:none;border-radius:0 0 var(--r-md) var(--r-md);
+              box-shadow:var(--shadow-md);max-height:180px;overflow-y:auto;
+              display:none;
+            "></div>
+          </div>
+        </div>
+
+        <!-- Items list -->
+        <div class="mb-6">
+          <h4 class="text-xs font-bold text-gray-500 mb-2" data-i18n="order_items">Items</h4>
+          <div class="overflow-x-auto" style="border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden">
+            <table class="data-table w-full">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Price</th>
+                  <th>Qty</th>
+                  <th>Total</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="detItemsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Payments list -->
+        <div class="mb-6">
+          <h4 class="text-xs font-bold text-gray-500 mb-2" data-i18n="payment_history">Payment History</h4>
+          <div class="overflow-x-auto" style="border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden">
+            <table class="data-table w-full">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Method</th>
+                  <th>Cashier</th>
+                </tr>
+              </thead>
+              <tbody id="detPaymentsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Manager Security Password Verification -->
+  <div id="managerPasswordModal" class="modal" style="z-index:1100;">
+    <div class="modal-content" style="max-width:400px">
+      <div class="px-6 py-4 bg-gradient-to-r from-amber-500 to-orange-500 flex justify-between items-center">
+        <h3 class="text-base font-semibold text-white"><i class="fas fa-lock"></i> Verification</h3>
+        <button onclick="closeModal('managerPasswordModal')" class="text-white hover:text-gray-200"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="p-6">
+        <p class="text-sm text-gray-600 mb-4" data-i18n="manager_password_desc">Manager authorization is required to modify or remove layaway items.</p>
+        <div class="form-group mb-6">
+          <label data-i18n="new_manager_password">Manager Security Password:</label>
+          <input type="password" id="managerPasswordInput" required>
+        </div>
+        <div class="flex justify-end gap-3">
+          <button class="btn btn-secondary" onclick="closeModal('managerPasswordModal')" data-i18n="cancel">Cancel</button>
+          <button class="btn btn-primary" onclick="confirmManagerAction()" data-i18n="submit">Verify</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" style="
+    position:fixed;bottom:24px;right:24px;z-index:9999;
+    background:#10b981;color:#fff;padding:12px 20px;
+    border-radius:10px;font-size:0.85rem;font-weight:600;
+    box-shadow:0 8px 24px rgba(16,185,129,0.35);
+    display:none;align-items:center;gap:8px;
+  ">
+    <i class="fas fa-check-circle"></i>
+    <span id="toast-msg">Done!</span>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/translations.js"></script>
+  <script src="js/open-orders-app.js"></script>
+</body>
+</html>

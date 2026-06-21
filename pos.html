@@ -133,20 +133,22 @@
         <h2 id="posSystemTitle" data-i18n="app_title">🏪Tasgheel POS System</h2>
         <p id="licensedVersion" data-i18n="enhanced_edition">Enterprise Edition</p>
       </div>
-      <nav class="flex-1 overflow-y-auto py-4">
+            <nav class="flex-1 overflow-y-auto py-4">
         <a href="pos.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-brand-blue bg-white/10 text-white" data-i18n="nav_pos">🛒 Point of Sale</a>
         <a href="products.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_products">📦 Products</a>
         <a href="inventory.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_inventory">📊 Inventory</a>
+        <a href="stock-transfer.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stock_transfer">🔄 Stock Transfer</a>
+        <a href="price-list.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_price_list">💰 Price List</a>
         <a href="purchases.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_purchases">📥 Purchases</a>
         <a href="receipts.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_receipts">🧾 Receipts</a>
         <a href="reports.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_reports">📈 Reports</a>
         <a href="suppliers.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_suppliers">🏢 Suppliers</a>
         <a href="customers.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_customers">👥 Customers</a>
+        <a href="open-orders.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_open_orders">📝 Open Orders</a>
         <a href="salesmen.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_salesmen">🧑‍💼 Salesmen</a>
         <a href="expenses.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_expenses">📋 Expenses</a>
         <a href="stores.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stores">🏢 Warehouses</a>
         <a href="admin.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_admin">⚙️ Admin Panel</a>
-        <a href="ecommerce.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white">🌐 E-Commerce</a>
         <a href="backup.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_backup">💾 Backup</a>
       </nav>
 
@@ -200,7 +202,16 @@
           
           <!-- Left Content Wrapper -->
           <div class="flex-1 flex flex-col min-w-0 bg-white rounded-[24px] p-6 shadow-sm border border-gray-100 overflow-hidden">
-            <h2 class="text-xl font-bold text-brand-dark mb-6">Point of Sale</h2>
+            <div class="flex justify-between items-center mb-6">
+              <h2 class="text-xl font-bold text-brand-dark" data-i18n="pos_title">Point of Sale</h2>
+              <div class="flex gap-2">
+                <button id="tabProducts" class="btn btn-primary" onclick="switchPosTab('products')" data-i18n="pos_products_tab">Products</button>
+                <button id="tabHeld" class="btn btn-secondary relative" onclick="switchPosTab('held')" data-i18n="pos_held_tab">
+                  Held Invoices
+                  <span id="heldCountBadge" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full text-[10px] w-5 h-5 flex items-center justify-center font-bold" style="display:none;">0</span>
+                </button>
+              </div>
+            </div>
             
             <div class="flex flex-1 gap-6 min-h-0">
               
@@ -279,6 +290,7 @@
                 <button class="py-2 text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all" onclick="openSplitPaymentModal()" id="splitBtn">Split</button>
                 <button class="py-2 text-xs font-bold text-orange-500 bg-orange-50 hover:bg-orange-100 rounded-lg transition-all" onclick="holdTransaction()" id="holdBtn">Hold</button>
                 <button class="py-2 text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 rounded-lg transition-all" onclick="clearCart()" id="clearCartBtn">Clear</button>
+                <button class="col-span-2 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-all" onclick="createLayawayFromPOS()" id="layawayBtn" data-i18n="pos_layaway_btn">📝 Save as Layaway</button>
                 <button class="col-span-2 py-3 text-sm font-bold text-red-600 bg-red-100 hover:bg-red-200 rounded-xl transition-all mt-2" onclick="closeShift()" id="closeShiftBtn">Close Shift</button>
               </div>
             </div>
@@ -399,6 +411,11 @@
       <label data-i18n="discount_value_label">Value:</label>
       <input type="number" id="discountValue" placeholder="0">
       <br><br>
+      <!-- Manager Password Group -->
+      <div id="discountPasswordGroup" style="display:none; margin-bottom:15px;">
+        <label data-i18n="manager_password_required" style="display:block; margin-bottom:5px; font-weight:600;">Manager Password:</label>
+        <input type="password" id="discountManagerPassword" placeholder="Required for discount" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+      </div>
       <button onclick="saveDiscount()" data-i18n="discount_save">💾 Save</button>
       <button onclick="closeDiscountModal()" data-i18n="discount_cancel">✖️ Cancel</button>
     </div>

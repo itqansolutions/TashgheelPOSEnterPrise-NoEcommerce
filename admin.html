@@ -19,20 +19,22 @@
     <!-- Sidebar -->
     <aside id="appSidebar" class="bg-gradient-to-b from-brand-dark-2 to-brand-dark text-white flex flex-col shadow-2xl z-20 shrink-0" style="width: 260px; min-width: 260px; min-height: 100vh;">
       <div class="sidebar-header"><h2 data-i18n="app_title">🏪 Tashgheel POS</h2><p data-i18n="enhanced_edition">Enterprise Edition</p></div>
-      <nav class="flex-1 overflow-y-auto py-4">
+            <nav class="flex-1 overflow-y-auto py-4">
         <a href="pos.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_pos">🛒 Point of Sale</a>
         <a href="products.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_products">📦 Products</a>
         <a href="inventory.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_inventory">📊 Inventory</a>
+        <a href="stock-transfer.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stock_transfer">🔄 Stock Transfer</a>
+        <a href="price-list.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_price_list">💰 Price List</a>
         <a href="purchases.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_purchases">📥 Purchases</a>
         <a href="receipts.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_receipts">🧾 Receipts</a>
         <a href="reports.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_reports">📈 Reports</a>
         <a href="suppliers.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_suppliers">🏢 Suppliers</a>
         <a href="customers.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_customers">👥 Customers</a>
+        <a href="open-orders.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_open_orders">📝 Open Orders</a>
         <a href="salesmen.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_salesmen">🧑‍💼 Salesmen</a>
         <a href="expenses.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_expenses">📋 Expenses</a>
         <a href="stores.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stores">🏢 Warehouses</a>
         <a href="admin.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-brand-blue bg-white/10 text-white" data-i18n="nav_admin">⚙️ Admin Panel</a>
-        <a href="ecommerce.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white">🌐 E-Commerce</a>
         <a href="backup.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_backup">💾 Backup</a>
       </nav>
       <div class="sidebar-footer" style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.1);"><button class="btn btn-danger w-full" onclick="confirmLogout()" data-i18n="logout">Logout</button></div>
@@ -44,52 +46,53 @@
       </header>
       <section id="scrollableSection" style="flex: 1 !important; padding: 30px !important; display: flex !important; flex-direction: column !important; gap: 30px !important; background-color: #f4f7f9 !important;">
         
-        <!-- Dashboard Metrics (Image 3 Style) -->
+        <!-- Dashboard Metrics -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 shrink-0">
           <div class="admin-stat-card-blue flex flex-col justify-between p-6">
             <div class="flex justify-between items-start">
               <div>
-                <p class="text-sm font-semibold text-blue-700/80 mb-1">Total Revenue</p>
-                <h3 class="text-2xl font-bold text-blue-900">$124,563.00</h3>
+                <p class="text-sm font-semibold text-blue-700/80 mb-1" data-i18n="today_revenue">Today's Revenue</p>
+                <h3 class="text-2xl font-bold text-blue-900" id="stat-revenue">0.00 EGP</h3>
               </div>
               <div class="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-600"><i class="fas fa-dollar-sign"></i></div>
             </div>
-            <div class="mt-4 flex items-center text-sm"><span class="text-green-600 font-bold mr-2"><i class="fas fa-arrow-up"></i> 14.5%</span><span class="text-blue-700/60">vs last month</span></div>
+            <div class="mt-4 flex items-center text-sm"><span class="text-blue-700/60" data-i18n="live_updates">Live Updates</span></div>
           </div>
           
           <div class="admin-stat-card-green flex flex-col justify-between p-6">
             <div class="flex justify-between items-start">
               <div>
-                <p class="text-sm font-semibold text-green-700/80 mb-1">In-store Orders</p>
-                <h3 class="text-2xl font-bold text-green-900">1,429</h3>
+                <p class="text-sm font-semibold text-green-700/80 mb-1" data-i18n="today_invoices">Today's Invoices</p>
+                <h3 class="text-2xl font-bold text-green-900" id="stat-invoices">0</h3>
               </div>
-              <div class="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-600"><i class="fas fa-store"></i></div>
+              <div class="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-600"><i class="fas fa-file-invoice-dollar"></i></div>
             </div>
-            <div class="mt-4 flex items-center text-sm"><span class="text-green-600 font-bold mr-2"><i class="fas fa-arrow-up"></i> 8.2%</span><span class="text-green-700/60">vs last month</span></div>
+            <div class="mt-4 flex items-center text-sm"><span class="text-green-700/60" data-i18n="live_updates">Live Updates</span></div>
           </div>
 
           <div class="admin-stat-card-orange flex flex-col justify-between p-6">
             <div class="flex justify-between items-start">
               <div>
-                <p class="text-sm font-semibold text-amber-700/80 mb-1">Pick-up Orders</p>
-                <h3 class="text-2xl font-bold text-amber-900">384</h3>
+                <p class="text-sm font-semibold text-amber-700/80 mb-1" data-i18n="nav_products">Total Products</p>
+                <h3 class="text-2xl font-bold text-amber-900" id="stat-products">0</h3>
               </div>
               <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-600"><i class="fas fa-box"></i></div>
             </div>
-            <div class="mt-4 flex items-center text-sm"><span class="text-red-600 font-bold mr-2"><i class="fas fa-arrow-down"></i> 2.1%</span><span class="text-amber-700/60">vs last month</span></div>
+            <div class="mt-4 flex items-center text-sm"><span class="text-amber-700/60" data-i18n="live_updates">Live Updates</span></div>
           </div>
 
           <div class="admin-stat-card-purple flex flex-col justify-between p-6">
             <div class="flex justify-between items-start">
               <div>
-                <p class="text-sm font-semibold text-purple-700/80 mb-1">Online Orders</p>
-                <h3 class="text-2xl font-bold text-purple-900">892</h3>
+                <p class="text-sm font-semibold text-purple-700/80 mb-1" data-i18n="nav_customers">Total Customers</p>
+                <h3 class="text-2xl font-bold text-purple-900" id="stat-customers">0</h3>
               </div>
-              <div class="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-600"><i class="fas fa-globe"></i></div>
+              <div class="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-600"><i class="fas fa-users"></i></div>
             </div>
-            <div class="mt-4 flex items-center text-sm"><span class="text-green-600 font-bold mr-2"><i class="fas fa-arrow-up"></i> 24.5%</span><span class="text-purple-700/60">vs last month</span></div>
+            <div class="mt-4 flex items-center text-sm"><span class="text-purple-700/60" data-i18n="live_updates">Live Updates</span></div>
           </div>
         </div>
+
         <!-- Shop Settings Card -->
         <div class="bg-white rounded-2xl shadow-premium border border-gray-100 overflow-hidden">
           <div class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-brand-blue to-brand-purple">
@@ -109,63 +112,26 @@
           </div>
         </div>
 
-        <!-- E-Commerce Credentials Card -->
-        <div id="ecommerce" class="bg-white rounded-2xl shadow-premium border border-gray-100 overflow-hidden">
-          <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
-            <h2 class="text-base font-bold text-brand-dark">🌐 Online Platform Credentials</h2>
-            <span class="text-[10px] bg-brand-blue text-white px-2 py-0.5 rounded font-bold uppercase">New Integration</span>
+        <!-- Manager Security Password Card -->
+        <div class="bg-white rounded-2xl shadow-premium border border-gray-100 overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-amber-500 to-orange-500">
+            <h2 class="text-base font-semibold text-white" data-i18n="manager_password_title">🔐 Manager Security Password</h2>
           </div>
-          <div class="p-6 flex flex-col gap-8">
-            <!-- WooCommerce Section -->
-            <div class="border rounded-xl p-5 hover:border-brand-purple transition-colors">
-              <div class="flex items-center gap-3 mb-4"><i class="fab fa-wordpress text-2xl text-brand-purple"></i><h3 class="font-bold">WooCommerce</h3></div>
-              <form id="wc-config-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="form-group"><label class="text-xs font-bold text-gray-500">WordPress Site URL</label><input type="url" id="wc-site-url" placeholder="https://mysite.com" class="!py-2"></div>
-                <div class="form-group"><label class="text-xs font-bold text-gray-500">Consumer Key (ck_...)</label><input type="password" id="wc-key" class="!py-2"></div>
-                <div class="form-group"><label class="text-xs font-bold text-gray-500">Consumer Secret (cs_...)</label><input type="password" id="wc-secret" class="!py-2"></div>
-                <div class="form-group flex items-end"><button type="submit" class="bg-brand-purple text-white px-6 py-2.5 rounded-lg text-sm font-bold w-full hover:bg-brand-purple-dark transition-all">Connect WooCommerce</button></div>
-              </form>
-            </div>
-            
-            <!-- Jumia Section -->
-            <div class="border rounded-xl p-5 hover:border-brand-orange transition-colors">
-              <div class="flex items-center gap-3 mb-4"><i class="fas fa-shopping-bag text-2xl text-brand-orange"></i><h3 class="font-bold">Jumia Seller (Egypt)</h3></div>
-              <form id="jumia-config-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="form-group"><label class="text-xs font-bold text-gray-500">User ID (Email)</label><input type="email" id="jumia-user-id" class="!py-2"></div>
-                <div class="form-group"><label class="text-xs font-bold text-gray-500">API Key</label><input type="password" id="jumia-api-key" class="!py-2"></div>
-                <div class="form-group md:col-span-2 flex justify-end"><button type="submit" class="bg-brand-orange text-white px-6 py-2.5 rounded-lg text-sm font-bold w-48 hover:bg-orange-600 transition-all">Connect Jumia</button></div>
-              </form>
-            </div>
-
-            <!-- Amazon Section -->
-            <div class="border rounded-xl p-5 hover:border-brand-blue transition-colors">
-              <div class="flex items-center gap-3 mb-4"><i class="fab fa-amazon text-2xl text-brand-blue"></i><h3 class="font-bold">Amazon.eg SP-API</h3></div>
-              <form id="amazon-config-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="form-group"><label class="text-xs font-bold text-gray-500">Seller ID</label><input type="text" id="amazon-seller-id" class="!py-2"></div>
-                <div class="form-group"><label class="text-xs font-bold text-gray-500">LWA Client ID</label><input type="text" id="amazon-client-id" class="!py-2"></div>
-                <div class="form-group"><label class="text-xs font-bold text-gray-500">LWA Client Secret</label><input type="password" id="amazon-client-secret" class="!py-2"></div>
-                <div class="form-group"><label class="text-xs font-bold text-gray-500">LWA Refresh Token</label><input type="password" id="amazon-refresh-token" class="!py-2"></div>
-                <div class="form-group md:col-span-2 flex justify-end"><button type="submit" class="bg-brand-blue text-white px-6 py-2.5 rounded-lg text-sm font-bold w-48 hover:bg-brand-blue-dark transition-all">Connect Amazon</button></div>
-              </form>
-            </div>
-
-            <!-- Noon Egypt Section -->
-            <div class="border rounded-xl p-5 hover:border-yellow-500 transition-colors">
-              <div class="flex items-center gap-3 mb-4">
-                <span class="text-3xl">🌙</span>
-                <div>
-                  <h3 class="font-bold">Noon Egypt</h3>
-                  <p class="text-xs text-gray-500">noon.partners FBPI Seller API</p>
-                </div>
+          <div class="p-6">
+            <p class="text-sm text-gray-500 mb-4" data-i18n="manager_password_desc">Used to authorize discounts, removing items from open orders, and other sensitive operations.</p>
+            <form id="manager-password-form" class="form-grid">
+              <div class="form-group">
+                <label data-i18n="new_manager_password">New Manager Password:</label>
+                <input type="password" id="new-manager-password" required minlength="4">
               </div>
-              <form id="noon-config-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="form-group"><label class="text-xs font-bold text-gray-500">Seller Email (noon.partners)</label><input type="email" id="noon-email" placeholder="seller@company.com" class="!py-2"></div>
-                <div class="form-group"><label class="text-xs font-bold text-gray-500">Seller Password</label><input type="password" id="noon-password" placeholder="••••••••" class="!py-2"></div>
-                <div class="form-group"><label class="text-xs font-bold text-gray-500">Warehouse / Store Code</label><input type="text" id="noon-store-code" placeholder="e.g. EGY01" class="!py-2"></div>
-                <div class="form-group"><label class="text-xs font-bold text-gray-500">Business ID (optional)</label><input type="text" id="noon-business-id" placeholder="From noon.partners portal" class="!py-2"></div>
-                <div class="form-group md:col-span-2 flex justify-end"><button type="submit" class="text-white px-6 py-2.5 rounded-lg text-sm font-bold w-48 transition-all" style="background:#f5a623;">Connect Noon Egypt</button></div>
-              </form>
-            </div>
+              <div class="form-group">
+                <label data-i18n="confirm_manager_password">Confirm Password:</label>
+                <input type="password" id="confirm-manager-password" required minlength="4">
+              </div>
+              <div class="form-group pt-4">
+                <button class="btn btn-primary w-full py-3" type="submit" data-i18n="save_manager_password">Save Manager Password</button>
+              </div>
+            </form>
           </div>
         </div>
 

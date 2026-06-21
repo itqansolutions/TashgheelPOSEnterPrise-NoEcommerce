@@ -12,44 +12,130 @@
 </head>
 <body class="bg-brand-gray-light font-sans text-brand-dark h-screen overflow-hidden flex flex-col m-0 p-0 antialiased">
   <div class="flex h-screen w-full overflow-hidden">
+    <!-- Sidebar -->
     <aside class="w-64 bg-gradient-to-b from-brand-dark-2 to-brand-dark text-white flex flex-col shadow-2xl shrink-0 z-20">
       <div class="sidebar-header"><h2 data-i18n="app_title">🏪 Tashgheel POS</h2><p data-i18n="enhanced_edition">Enterprise Edition</p></div>
-      <nav class="flex-1 overflow-y-auto py-4">
+            <nav class="flex-1 overflow-y-auto py-4">
         <a href="pos.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_pos">🛒 Point of Sale</a>
         <a href="products.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_products">📦 Products</a>
         <a href="inventory.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_inventory">📊 Inventory</a>
+        <a href="stock-transfer.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stock_transfer">🔄 Stock Transfer</a>
+        <a href="price-list.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_price_list">💰 Price List</a>
         <a href="purchases.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_purchases">📥 Purchases</a>
         <a href="receipts.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_receipts">🧾 Receipts</a>
         <a href="reports.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_reports">📈 Reports</a>
         <a href="suppliers.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_suppliers">🏢 Suppliers</a>
         <a href="customers.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_customers">👥 Customers</a>
+        <a href="open-orders.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_open_orders">📝 Open Orders</a>
         <a href="salesmen.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_salesmen">🧑‍💼 Salesmen</a>
         <a href="expenses.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-brand-blue bg-white/10 text-white" data-i18n="nav_expenses">📋 Expenses</a>
         <a href="stores.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stores">🏢 Warehouses</a>
         <a href="admin.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_admin">⚙️ Admin Panel</a>
-        <a href="ecommerce.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white">🌐 E-Commerce</a>
         <a href="backup.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_backup">💾 Backup</a>
       </nav>
       <div class="sidebar-footer"><button class="btn btn-danger" onclick="confirmLogout()" data-i18n="logout">Logout</button></div>
     </aside>
+
+    <!-- Main Content -->
     <main class="flex-1 flex flex-col min-h-0 overflow-hidden bg-brand-gray-light">
       <header class="bg-white/80 backdrop-blur-md px-8 py-4 shadow-sm border-b border-gray-200 flex justify-between items-center z-10 sticky top-0">
         <h1 class="text-xl font-bold text-brand-dark" data-i18n="nav_expenses">📋 Expenses</h1>
-        <div style="display:flex;align-items:center;gap:10px;"><span id="welcomeText" data-i18n="welcome">Welcome,</span><span id="currentUserName" class="font-semibold">User</span></div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span id="welcomeText" data-i18n="welcome">Welcome,</span>
+          <span id="currentUserName" class="font-semibold">User</span>
+        </div>
       </header>
+
       <section class="flex-1 overflow-y-auto min-h-0 p-6 lg:p-8 flex flex-col gap-6">
+        <!-- Expense Form -->
         <div class="bg-white rounded-2xl shadow-premium border border-gray-100 overflow-hidden">
-          <div class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-brand-blue to-brand-purple"><h2 class="text-base font-semibold text-white" data-i18n="add_expense">Add Expense</h2></div>
+          <div class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-brand-blue to-brand-purple">
+            <h2 class="text-base font-semibold text-white" data-i18n="add_expense">Add Expense</h2>
+          </div>
           <div class="p-6">
             <form id="expense-form" class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
-              <div class="form-group"><label data-i18n="expense_name">Expense Name</label><input type="text" id="expense-name" required></div>
-              <div class="form-group"><label data-i18n="amount">Amount</label><input type="number" id="expense-amount" step="0.01" required></div>
-              <div class="form-group"><label data-i18n="category">Category</label><input type="text" id="expense-category"></div>
-              <div class="flex gap-2"><button type="submit" class="btn btn-primary flex-1" data-i18n="save">Add Expense</button></div>
+              <div class="form-group">
+                <label data-i18n="date">Date</label>
+                <input type="date" id="expense-date" required>
+              </div>
+              <div class="form-group">
+                <label data-i18n="description">Description</label>
+                <input type="text" id="expense-desc" required placeholder="e.g. Rent Payment...">
+              </div>
+              <div class="form-group">
+                <label data-i18n="expense_category">Category</label>
+                <select id="expense-category" required>
+                  <option value="rent" data-i18n="category_rent">Rent</option>
+                  <option value="salaries" data-i18n="category_salaries">Salaries</option>
+                  <option value="electricity" data-i18n="category_electricity">Electricity</option>
+                  <option value="transportation" data-i18n="category_transportation">Transportation</option>
+                  <option value="miscellaneous" data-i18n="category_miscellaneous" selected>Miscellaneous</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label data-i18n="expense_branch">Branch</label>
+                <select id="expense-branch" required>
+                  <option value="" data-i18n="select_store">Select Branch</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label data-i18n="seller">Done By (Seller)</label>
+                <select id="expense-seller">
+                  <option value="">--</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label data-i18n="amount">Amount</label>
+                <input type="number" id="expense-amount" step="0.01" required>
+              </div>
+              <div class="form-group">
+                <label data-i18n="method">Payment Method</label>
+                <select id="expense-method" required>
+                  <option value="cash" data-i18n="cash">Cash</option>
+                  <option value="card" data-i18n="card">Card</option>
+                  <option value="mobile" data-i18n="mobile">Mobile Wallet</option>
+                </select>
+              </div>
+              <div class="flex gap-2">
+                <button type="submit" class="btn btn-primary flex-1" data-i18n="save">Add Expense</button>
+              </div>
             </form>
           </div>
         </div>
-        <div class="bg-white rounded-2xl shadow-premium border border-gray-100 overflow-hidden"><div class="overflow-x-auto"><table class="data-table w-full"><thead><tr><th data-i18n="date">Date</th><th data-i18n="name">Name</th><th data-i18n="category">Category</th><th data-i18n="amount">Amount</th><th data-i18n="actions">Actions</th></tr></thead><tbody id="expenses-body"></tbody></table></div></div>
+
+        <!-- Filter & Table -->
+        <div class="bg-white rounded-2xl shadow-premium border border-gray-100 overflow-hidden p-6">
+          <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+            <h3 class="text-base font-semibold" data-i18n="expenses_list">Expenses History</h3>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span id="totalExpenses" style="font-weight:700;font-size:1rem;color:var(--brand-blue)">Total: 0.00 EGP</span>
+            </div>
+          </div>
+          
+          <div class="overflow-x-auto">
+            <table class="data-table w-full">
+              <thead>
+                <tr>
+                  <th data-i18n="date">Date</th>
+                  <th data-i18n="description">Description</th>
+                  <th data-i18n="expense_category">Category</th>
+                  <th data-i18n="expense_branch">Branch</th>
+                  <th data-i18n="seller">Seller</th>
+                  <th data-i18n="amount">Amount</th>
+                  <th data-i18n="method">Method</th>
+                  <th data-i18n="actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="expenses-body">
+                <tr>
+                  <td colspan="8" style="text-align:center;padding:20px;color:var(--text-3);">
+                    <i class="fas fa-spinner fa-spin"></i> Loading...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section>
     </main>
   </div>

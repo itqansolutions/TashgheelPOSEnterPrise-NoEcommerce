@@ -125,6 +125,7 @@ async function checkOpenShift() {
       else console.warn('openShiftModal not found');
       disablePOS();
     } else {
+      localStorage.setItem('pos_selected_store', shift.storeId);
       // Shift exists. Check ownership.
       if (shift.cashier === currentUser) {
         // Same user.
@@ -574,7 +575,7 @@ function renderProducts() {
     return;
   }
 
-  const selectedStoreId = document.getElementById('pos-warehouse-selector')?.value;
+  const selectedStoreId = document.getElementById('pos-warehouse-selector')?.value || localStorage.getItem('pos_selected_store');
 
   filteredProducts.forEach((product) => {
     let currentStock = product.stock || 0;
@@ -969,6 +970,10 @@ function openDiscountModal() {
     // Reset fields
     document.getElementById("discountType").value = "none";
     document.getElementById("discountValue").value = "";
+    const pwGroup = document.getElementById("discountPasswordGroup");
+    if (pwGroup) pwGroup.style.display = "none";
+    const pwInput = document.getElementById("discountManagerPassword");
+    if (pwInput) pwInput.value = "";
   }
 }
 
@@ -977,9 +982,40 @@ function closeDiscountModal() {
   if (modal) modal.style.display = "none";
 }
 
-function saveDiscount() {
+async function saveDiscount() {
   const type = document.getElementById("discountType").value;
   const value = parseFloat(document.getElementById("discountValue").value) || 0;
+  const lang = localStorage.getItem('pos_language') || 'en';
+
+  if (type !== 'none' && value > 0) {
+    const password = document.getElementById("discountManagerPassword").value;
+    if (!password) {
+      alert(lang === 'ar' ? "مطلوب كلمة مرور المدير لتطبيق الخصم!" : "Manager password is required to apply discount!");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/verify-manager-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': token
+        },
+        body: JSON.stringify({ password })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        alert(errData.msg || (lang === 'ar' ? "كلمة مرور المدير غير صحيحة!" : "Incorrect manager password!"));
+        return;
+      }
+    } catch (err) {
+      console.error(err);
+      alert(lang === 'ar' ? "خطأ في الاتصال بالخادم" : "Connection error");
+      return;
+    }
+  }
 
   // Apply discount to the entire cart (simple implementation)
   // In a more complex system, we might apply per item or to subtotal
@@ -1230,11 +1266,15 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSalesmen();
   loadCustomers();
 
-  renderHeldOrders();
-  if (heldTransactions.length > 0) {
-    updateHeldCount();
-    startHeldOrdersTimer();
-  }
+  loadHeldTransactions();
+
+  // Discount password toggle listener
+  document.getElementById('discountType')?.addEventListener('change', (e) => {
+    const pwGroup = document.getElementById('discountPasswordGroup');
+    if (pwGroup) {
+      pwGroup.style.display = e.target.value === 'none' ? 'none' : 'block';
+    }
+  });
 
   // Event Listeners
   document.getElementById('productSearch')?.addEventListener('input', (e) => {
@@ -1575,7 +1615,7 @@ function scanBarcode() {
 
 window.scanBarcode = scanBarcode;
 window.clearCart = clearCart;
-// ===================== HELD ORDERS LOGIC =====================
+// ===================== HELD & LAYAWAY ORDERS LOGIC =====================
 
 function switchPosTab(tab) {
   const productGrid = document.getElementById('productGrid');
@@ -1583,6 +1623,8 @@ function switchPosTab(tab) {
   const catContainer = document.getElementById('categoryContainer');
   const tabProducts = document.getElementById('tabProducts');
   const tabHeld = document.getElementById('tabHeld');
+
+  if (!productGrid || !heldGrid || !catContainer || !tabProducts || !tabHeld) return;
 
   if (tab === 'products') {
     productGrid.style.display = 'grid';
@@ -1602,12 +1644,13 @@ function switchPosTab(tab) {
     tabProducts.classList.add('btn-secondary');
     tabHeld.classList.add('btn-primary');
     tabHeld.classList.remove('btn-secondary');
-    renderHeldOrders();
+    loadHeldTransactions();
   }
 }
 
 function updateHeldCount() {
   const badge = document.getElementById('heldCountBadge');
+  if (!badge) return;
   if (heldTransactions.length > 0) {
     badge.textContent = heldTransactions.length;
     badge.style.display = 'inline-block';
@@ -1616,42 +1659,90 @@ function updateHeldCount() {
   }
 }
 
-function holdTransaction() {
+async function loadHeldTransactions() {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/suspended-invoices`, {
+      headers: { 'x-auth-token': token }
+    });
+    if (response.ok) {
+      heldTransactions = await response.json();
+      updateHeldCount();
+      renderHeldOrders();
+      startHeldOrdersTimer();
+    }
+  } catch (err) {
+    console.error("Error loading suspended invoices:", err);
+  }
+}
+
+async function holdTransaction() {
   if (cart.length === 0) return alert("Cart is empty!");
 
-  let orderName = "";
-  let orderId = Date.now();
-  let originalTime = transactionStartTime || Date.now();
+  const lang = localStorage.getItem('pos_language') || 'en';
+  const namePrompt = lang === 'ar' ? "أدخل اسماً أو ملاحظة لهذا الطلب المعلق:" : "Enter a name or note for this held transaction:";
+  const notes = prompt(namePrompt) || "";
 
-  // CHECK IF THIS IS AN EXISTING HELD ORDER BEING RE-HELD
-  if (window.currentHeldOrderId) {
-    orderId = window.currentHeldOrderId;
-    orderName = window.currentHeldOrderName || "";
-    // If re-holding, remove the old version first (it will be added fresh below)
-    heldTransactions = heldTransactions.filter(o => o.id !== orderId);
-  } else {
-    // NEW HOLD
-    const lang = localStorage.getItem('pos_language') || 'en';
-    const namePrompt = lang === 'ar' ? "أدخل اسماً لهذا الطلب (اختياري):" : "Enter a name for this order (optional):";
-    orderName = prompt(namePrompt) || "";
+  const storeId = localStorage.getItem('pos_selected_store');
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const cashier = user ? user.username : 'cashier';
+  const customerSelect = document.getElementById("customerSelect");
+  const customerId = customerSelect ? customerSelect.value : null;
+  const salesmanSelect = document.getElementById("salesmanSelect");
+  const salesman = salesmanSelect ? salesmanSelect.value : null;
+
+  let discount = null;
+  if (window.cartDiscount) {
+    discount = window.cartDiscount;
   }
 
-  const heldOrder = {
-    id: orderId,
-    name: orderName,
-    timestamp: originalTime, // Store original time for display
-    startTime: originalTime, // Store original time for resume logic
-    cart: [...cart],
-    salesman: document.getElementById('salesmanSelect').value
+  const suspendedData = {
+    storeId,
+    cashier,
+    customerId,
+    items: cart.map(item => ({
+      code: item.code,
+      name: item.name,
+      qty: item.qty,
+      price: item.price,
+      cost: item.cost,
+      barcode: item.barcode || item.code,
+      trackStock: item.trackStock !== undefined ? item.trackStock : true,
+      category: item.category,
+      imageUrl: item.imageUrl,
+      stores: item.stores || [],
+      hasVariants: item.hasVariants || false,
+      variantName: item.variantName || null
+    })),
+    discount,
+    salesman,
+    notes
   };
 
-  heldTransactions.push(heldOrder);
-  localStorage.setItem('heldTransactions', JSON.stringify(heldTransactions));
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/suspended-invoices`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-auth-token': token
+      },
+      body: JSON.stringify(suspendedData)
+    });
 
-  clearCart(); // This will clear window.currentHeldOrderId via clearCart modifications
-  updateHeldCount();
-  renderHeldOrders();
-  startHeldOrdersTimer();
+    if (response.ok) {
+      clearCart();
+      alert(lang === 'ar' ? "تم تعليق الفاتورة بنجاح!" : "Transaction suspended successfully!");
+      await loadHeldTransactions();
+      switchPosTab('products');
+    } else {
+      const errData = await response.json();
+      alert((lang === 'ar' ? "فشل تعليق الفاتورة: " : "Failed to suspend transaction: ") + (errData.msg || ''));
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Connection error");
+  }
 }
 
 function startHeldOrdersTimer() {
@@ -1696,9 +1787,10 @@ function renderHeldOrders() {
   }
 
   heldTransactions.forEach(order => {
-    const total = order.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    const itemsArray = Array.isArray(order.items) ? order.items : [];
+    const total = itemsArray.reduce((sum, item) => sum + (item.price * item.qty), 0);
     const card = document.createElement('div');
-    card.className = 'product-card'; // Reuse product card style
+    card.className = 'product-card';
     card.style.cursor = 'default';
     card.style.display = 'flex';
     card.style.flexDirection = 'column';
@@ -1706,77 +1798,168 @@ function renderHeldOrders() {
 
     card.innerHTML = `
             <div style="padding:10px;">
-                <h4 style="margin:0">${order.name ? order.name : '#' + String(order.id).slice(-4)}</h4>
-                ${order.name ? `<small style="color:#888">Module #${String(order.id).slice(-4)}</small>` : ''}
-                <p style="color:#555;font-size:0.9em;">${order.cart.length} ${t.items}</p>
+                <h4 style="margin:0">${order.notes ? order.notes : '#' + String(order.id).slice(-4)}</h4>
+                <p style="color:#555;font-size:0.9em;">${itemsArray.length} ${t.items}</p>
                 <p style="font-weight:bold;margin-top:5px;">${total.toFixed(2)}</p>
-                <p class="held-timer" data-timestamp="${order.timestamp}" style="color:red;font-size:0.8em;margin-top:5px;">
-                    ${getHeldDuration(order.timestamp)}
+                <p class="held-timer" data-timestamp="${new Date(order.createdAt).getTime()}" style="color:red;font-size:0.8em;margin-top:5px;">
+                    ${getHeldDuration(new Date(order.createdAt).getTime())}
                 </p>
                 ${order.salesman ? `<p style="font-size:0.8em;color:#666">👤 ${order.salesman}</p>` : ''}
+                <p style="font-size:0.75rem;color:#888;margin-top:5px;">Cashier: ${order.cashier}</p>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:5px;">
-                <button onclick="resumeHeldOrder(${order.id})" class="btn btn-success" style="font-size:0.8em">${t.resume}</button>
-                <button onclick="discardHeldOrder(${order.id})" class="btn btn-danger" style="font-size:0.8em">${t.discard}</button>
+                <button onclick="resumeHeldOrder('${order.id}')" class="btn btn-success" style="font-size:0.8em">${t.resume}</button>
+                <button onclick="discardHeldOrder('${order.id}')" class="btn btn-danger" style="font-size:0.8em">${t.discard}</button>
             </div>
         `;
     grid.appendChild(card);
   });
 }
 
-function resumeHeldOrder(id) {
+async function resumeHeldOrder(id) {
   if (cart.length > 0) {
     const lang = localStorage.getItem('pos_language') || 'en';
     const msg = lang === 'ar' ? 'السلة ليست فارغة. هل تريد استبدالها؟' : 'Cart is not empty. Replace it?';
     if (!confirm(msg)) return;
   }
 
-  const orderIndex = heldTransactions.findIndex(o => o.id === id);
-  if (orderIndex === -1) return;
+  const order = heldTransactions.find(o => o.id === id);
+  if (!order) return;
 
-  const order = heldTransactions[orderIndex];
-  cart = [...order.cart];
-  transactionStartTime = order.startTime || order.timestamp; // Restore start time
+  cart = Array.isArray(order.items) ? order.items.map(item => ({
+    code: item.code,
+    name: item.name,
+    qty: item.qty,
+    price: item.price,
+    cost: item.cost,
+    barcode: item.barcode || item.code,
+    trackStock: item.trackStock !== undefined ? item.trackStock : true,
+    category: item.category,
+    imageUrl: item.imageUrl,
+    stores: item.stores || [],
+    hasVariants: item.hasVariants || false,
+    variantName: item.variantName || null
+  })) : [];
 
-  // RESTORE HELD STATE FOR RE-HOLDING
-  window.currentHeldOrderId = order.id;
-  window.currentHeldOrderName = order.name;
+  window.cart = cart;
 
-  // Calculate elapsed time in hours
-  const now = Date.now();
-  const elapsedMs = now - transactionStartTime;
-  const elapsedHours = elapsedMs / (1000 * 60 * 60);
-
-  // Legacy "Update Quantity of FIRST item" logic REMOVED as per user request (manual timers now used)
-  // Logic relies on persisted 'accumulatedTime' in item objects.
-
-  if (order.salesman) {
-    document.getElementById('salesmanSelect').value = order.salesman;
+  if (order.customerId) {
+    const customerSelect = document.getElementById("customerSelect");
+    if (customerSelect) customerSelect.value = order.customerId;
   }
 
-  heldTransactions.splice(orderIndex, 1);
-  localStorage.setItem('heldTransactions', JSON.stringify(heldTransactions));
+  if (order.salesman) {
+    const salesmanSelect = document.getElementById("salesmanSelect");
+    if (salesmanSelect) salesmanSelect.value = order.salesman;
+  }
 
+  if (order.discount) {
+    window.cartDiscount = order.discount;
+  } else {
+    window.cartDiscount = null;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    await fetch(`${API_URL}/suspended-invoices/${id}`, {
+      method: 'DELETE',
+      headers: { 'x-auth-token': token }
+    });
+  } catch (err) {
+    console.error("Error deleting suspended invoice upon resume:", err);
+  }
+
+  await loadHeldTransactions();
   updateCartSummary();
-  updateHeldCount();
-  renderHeldOrders();
   switchPosTab('products');
 }
 
-function discardHeldOrder(id) {
+async function discardHeldOrder(id) {
   const lang = localStorage.getItem('pos_language') || 'en';
   if (!confirm(lang === 'ar' ? 'تأكيد الحذف؟' : 'Confirm discard?')) return;
 
-  heldTransactions = heldTransactions.filter(o => o.id !== id);
-  localStorage.setItem('heldTransactions', JSON.stringify(heldTransactions));
-  updateHeldCount();
-  renderHeldOrders();
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/suspended-invoices/${id}`, {
+      method: 'DELETE',
+      headers: { 'x-auth-token': token }
+    });
+    if (response.ok) {
+      await loadHeldTransactions();
+    } else {
+      alert("Failed to delete suspended invoice");
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Connection error");
+  }
+}
+
+async function createLayawayFromPOS() {
+  if (cart.length === 0) return alert("Cart is empty!");
+  
+  const lang = localStorage.getItem('pos_language') || 'en';
+  const customerId = document.getElementById("customerSelect").value;
+  if (!customerId) {
+    alert(lang === 'ar' ? "يرجى اختيار عميل للطلب المعلق!" : "Please select a customer for the layaway order!");
+    return;
+  }
+
+  const namePrompt = lang === 'ar' ? "أدخل ملاحظات لهذا الطلب (اختياري):" : "Enter notes for this layaway order (optional):";
+  const notes = prompt(namePrompt) || "";
+
+  const storeId = localStorage.getItem('pos_selected_store');
+  const body = {
+    customerId,
+    storeId,
+    notes,
+    items: cart.map(item => ({
+      productId: item.id,
+      code: item.barcode || item.code,
+      name: item.name,
+      qty: item.qty,
+      price: item.price,
+      cost: item.cost
+    }))
+  };
+
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/open-orders', {
+      method: 'POST',
+      headers: {
+        'x-auth-token': token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (res.ok) {
+      clearCart();
+      alert(lang === 'ar' ? "تم حفظ طلب الحجز/الآجل بنجاح!" : "Layaway order saved successfully!");
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alert(err.msg || (lang === 'ar' ? "فشل حفظ الطلب" : "Failed to save layaway order"));
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Connection error");
+  }
 }
 
 window.switchPosTab = switchPosTab;
 window.resumeHeldOrder = resumeHeldOrder;
 window.discardHeldOrder = discardHeldOrder;
 window.holdTransaction = holdTransaction;
+window.openDiscountModal = openDiscountModal;
+window.saveDiscount = saveDiscount;
+window.editCartItemQty = editCartItemQty;
+window.closeDiscountModal = closeDiscountModal;
+window.openSplitPaymentModal = openSplitPaymentModal;
+window.updateSplitCalculations = updateSplitCalculations;
+window.confirmSplitPayment = confirmSplitPayment;
+window.createLayawayFromPOS = createLayawayFromPOS;
+window.loadHeldTransactions = loadHeldTransactions;
 window.openDiscountModal = openDiscountModal;
 window.saveDiscount = saveDiscount;
 window.editCartItemQty = editCartItemQty;
@@ -1854,195 +2037,6 @@ async function confirmSplitPayment() {
   }
 }
 
-function startHeldOrdersTimer() {
-  if (heldOrdersInterval) clearInterval(heldOrdersInterval);
-  heldOrdersInterval = setInterval(() => {
-    const timerElements = document.querySelectorAll('.held-timer');
-    timerElements.forEach(el => {
-      const timestamp = parseInt(el.dataset.timestamp);
-      el.textContent = getHeldDuration(timestamp);
-    });
-  }, 60000); // Update every minute
-}
-
-function getHeldDuration(timestamp) {
-  const diff = Date.now() - timestamp;
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  const lang = localStorage.getItem('pos_language') || 'en';
-  const heldFor = lang === 'ar' ? 'معلق منذ:' : 'Held for:';
-  return `${heldFor} ${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-}
-
-function renderHeldOrders() {
-  const grid = document.getElementById('heldOrdersGrid');
-  if (!grid) return;
-  grid.innerHTML = '';
-
-  const lang = localStorage.getItem('pos_language') || 'en';
-  const t = {
-    resume: lang === 'ar' ? 'استكمال' : 'Resume',
-    discard: lang === 'ar' ? 'حذف' : 'Discard',
-    items: lang === 'ar' ? 'أصناف' : 'Items',
-    total: lang === 'ar' ? 'إجمالي' : 'Total'
-  };
-
-  if (heldTransactions.length === 0) {
-    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #666; padding: 20px;">
-            ${lang === 'ar' ? 'لا توجد طلبات معلقة' : 'No held orders active'}
-        </div>`;
-    return;
-  }
-
-  heldTransactions.forEach(order => {
-    const total = order.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-    const card = document.createElement('div');
-    card.className = 'product-card'; // Reuse product card style
-    card.style.cursor = 'default';
-    card.style.display = 'flex';
-    card.style.flexDirection = 'column';
-    card.style.justifyContent = 'space-between';
-
-    card.innerHTML = `
-            <div style="padding:10px;">
-                <h4 style="margin:0">${order.name ? order.name : '#' + String(order.id).slice(-4)}</h4>
-                ${order.name ? `<small style="color:#888">Module #${String(order.id).slice(-4)}</small>` : ''}
-                <p style="color:#555;font-size:0.9em;">${order.cart.length} ${t.items}</p>
-                <p style="font-weight:bold;margin-top:5px;">${total.toFixed(2)}</p>
-                <p class="held-timer" data-timestamp="${order.timestamp}" style="color:red;font-size:0.8em;margin-top:5px;">
-                    ${getHeldDuration(order.timestamp)}
-                </p>
-                ${order.salesman ? `<p style="font-size:0.8em;color:#666">👤 ${order.salesman}</p>` : ''}
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:5px;">
-                <button onclick="resumeHeldOrder(${order.id})" class="btn btn-success" style="font-size:0.8em">${t.resume}</button>
-                <button onclick="discardHeldOrder(${order.id})" class="btn btn-danger" style="font-size:0.8em">${t.discard}</button>
-            </div>
-        `;
-    grid.appendChild(card);
-  });
-}
-
-function resumeHeldOrder(id) {
-  if (cart.length > 0) {
-    const lang = localStorage.getItem('pos_language') || 'en';
-    const msg = lang === 'ar' ? 'السلة ليست فارغة. هل تريد استبدالها؟' : 'Cart is not empty. Replace it?';
-    if (!confirm(msg)) return;
-  }
-
-  const orderIndex = heldTransactions.findIndex(o => o.id === id);
-  if (orderIndex === -1) return;
-
-  const order = heldTransactions[orderIndex];
-  cart = [...order.cart];
-  transactionStartTime = order.startTime || order.timestamp; // Restore start time
-
-  // Calculate elapsed time (Legacy Logic REMOVED)
-  // We now rely on the 'accumulatedTime' and 'lastStartTime' preserved in the item objects.
-  // However, we need to handle if an item was RUNNING when held.
-  // If it was running, we need to decide: 
-  // 1. Did it continue running while held? (User Request: "Stop counting ON receipt hold" -> implied PAUSE?)
-  // User Prompt: "before putting the receipt in hold i need in the line of the items to click button like start on the PS room... and remove the counting on the first item only now"
-  // Actually, usually POS systems logic:
-  // If I hold a table, they might still be playing.
-  // But the user said: "before putting the receipt in hold i need... to click button like start... then if he requested coffe... and the he exited... stop the counting... and remove the counting on the first item only now"
-  // It seems the user wants manual control. 
-  // CRITICAL: If the user HOLDS the receipt, does the timer PAUSE or CONTINUE?
-  // "stop counting on PS and start Counting in Billard" Implies manual stop/start.
-  // If I hold the receipt, the logical assumption for a "Room" is that time continues until I checkout.
-  // BUT, to keep it simple and consistent with "Stop/Start" buttons:
-  // We will preserve the state. If it was isRunning=true, it effectively "paused" calculation in UI, but we need to account for the GAP?
-  // OR, does isRunning=true mean it WAS running, so when we resume, we should add the held duration?
-
-  // CURRENT DECISION: 
-  // User wants explicit Start/Stop. 
-  // If I Hold, I likely am serving another customer. The guy in the room IS STILL PLAYING.
-  // So when I resume, the timer should reflect that he never stopped.
-  // So: If isRunning=true, we adjust lastStartTime to account for the time elapsed while held?
-  // No, actually:
-  // timestamp = 10:00. Start = 10:00.
-  // Hold at 10:05. (Elapsed 5m).
-  // Resume at 10:15.
-  // If I do nothing, `Date.now() - lastStartTime` = 10:15 - 10:00 = 15m.
-  // This is CORRECT for a continuous service (PS Room).
-  // So we don't need to do anything special! The math `Date.now() - lastStartTime` automatically covers the gap.
-  // The only issue is if the user WANTED to pause it. But they have a Stop button for that.
-  // If they left it RUNNING when they held it, it means it's still running.
-
-  // So we just remove the legacy "update first item qty" block.
-
-
-  if (order.salesman) {
-    document.getElementById('salesmanSelect').value = order.salesman;
-  }
-
-  heldTransactions.splice(orderIndex, 1);
-  localStorage.setItem('heldTransactions', JSON.stringify(heldTransactions));
-
-  updateCartSummary();
-  updateHeldCount();
-  renderHeldOrders();
-  switchPosTab('products');
-}
-
-function discardHeldOrder(id) {
-  const lang = localStorage.getItem('pos_language') || 'en';
-  if (!confirm(lang === 'ar' ? 'تأكيد الحذف؟' : 'Confirm discard?')) return;
-
-  heldTransactions = heldTransactions.filter(o => o.id !== id);
-  localStorage.setItem('heldTransactions', JSON.stringify(heldTransactions));
-  updateHeldCount();
-  renderHeldOrders();
-}
-
-window.switchPosTab = switchPosTab;
-window.resumeHeldOrder = resumeHeldOrder;
-window.discardHeldOrder = discardHeldOrder;
-window.holdTransaction = holdTransaction;
-window.openDiscountModal = openDiscountModal;
-window.saveDiscount = saveDiscount;
-window.editCartItemQty = editCartItemQty;
-window.closeDiscountModal = closeDiscountModal;
-window.openSplitPaymentModal = openSplitPaymentModal;
-window.updateSplitCalculations = updateSplitCalculations;
-window.confirmSplitPayment = confirmSplitPayment;
-window.toggleItemTimer = toggleItemTimer;
-
-// ===================== SPLIT PAYMENT =====================
-function openSplitPaymentModal() {
-  if (cart.length === 0) return;
-
-  // Ensure calculation is up to date
-  const total = window.currentTransactionTotal || 0;
-
-  document.getElementById('splitPaymentModal').style.display = 'flex';
-  document.getElementById('splitTotalAmount').textContent = total.toFixed(2);
-
-  // Reset inputs
-  document.getElementById('splitCash').value = '';
-  document.getElementById('splitCard').value = '';
-  document.getElementById('splitMobile').value = '';
-
-  updateSplitCalculations();
-}
-
-function updateSplitCalculations() {
-  const total = window.currentTransactionTotal || 0;
-  const cash = parseFloat(document.getElementById('splitCash').value) || 0;
-  const card = parseFloat(document.getElementById('splitCard').value) || 0;
-  const mobile = parseFloat(document.getElementById('splitMobile').value) || 0;
-
-  const paid = cash + card + mobile;
-  const remaining = total - paid;
-
-  const remainingEl = document.getElementById('splitRemaining');
-  const confirmBtn = document.getElementById('confirmSplitBtn');
-
-  remainingEl.textContent = remaining.toFixed(2);
-
-  if (Math.abs(remaining) < 0.1) { // Floating point tolerance
-    remainingEl.style.color = 'green';
     confirmBtn.disabled = false;
     remainingEl.textContent = "0.00 (Ready)";
   } else {

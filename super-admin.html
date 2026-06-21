@@ -1,161 +1,796 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/png" href="favicon.png">
-    <title>Super Admin Dashboard</title>
-    <link rel="stylesheet" href="css/styles.css?v=8.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="favicon.png">
+  <title>Super Admin — Tashgheel POS</title>
+  <link rel="stylesheet" href="css/styles.css?v=8.0">
   <link rel="stylesheet" href="css/tailwind.css">
   <link rel="stylesheet" href="css/components.css">
-    <style>
-        /* Super Admin Specific Styles */
-        body {
-            background: #f0f2f5;
-        }
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    /* =====================================================
+       SUPER ADMIN — PAGE-SCOPED STYLES
+       ===================================================== */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; font-family: 'Inter', 'Segoe UI', sans-serif; background: #f4f7f9; }
 
-        .super-admin-container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
+    /* ---------- Login overlay ---------- */
+    #login-overlay {
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg, #1a1f2e 0%, #2d3561 50%, #1a1f2e 100%);
+      display: flex; justify-content: center; align-items: center; z-index: 1000;
+    }
+    .login-card {
+      background: #fff; border-radius: 16px; padding: 2.5rem 2rem;
+      width: 100%; max-width: 420px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.35);
+      text-align: center;
+    }
+    .login-card .brand-icon { font-size: 2.8rem; margin-bottom: 0.5rem; }
+    .login-card h2 { color: #1a1f2e; font-size: 1.4rem; font-weight: 700; margin: 0 0 0.25rem; }
+    .login-card p  { color: #6b7280; font-size: 0.85rem; margin: 0 0 1.5rem; }
+    .login-card input {
+      width: 100%; padding: 0.65rem 0.9rem; border: 1px solid #d1d5db;
+      border-radius: 8px; font-size: 0.9rem; margin-bottom: 0.85rem;
+      outline: none; transition: border-color .2s;
+    }
+    .login-card input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,.12); }
+    .login-card .login-btn {
+      width: 100%; padding: 0.75rem;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #fff; border: none; border-radius: 8px; font-size: 0.95rem;
+      font-weight: 600; cursor: pointer; transition: opacity .2s;
+    }
+    .login-card .login-btn:hover { opacity: 0.9; }
+    #login-error { color: #dc2626; font-size: 0.82rem; margin-top: 0.5rem; display: none; }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
+    /* ---------- Layout shell ---------- */
+    #app-shell { display: none; flex-direction: row; min-height: 100vh; }
 
-        .header h1 {
-            color: #2c3e50;
-        }
+    /* ---------- Sidebar ---------- */
+    .sa-sidebar {
+      width: 240px; min-width: 240px; min-height: 100vh;
+      background: linear-gradient(180deg, #1a1f2e 0%, #252d45 100%);
+      display: flex; flex-direction: column; color: #fff;
+      box-shadow: 4px 0 24px rgba(0,0,0,.25); z-index: 10; flex-shrink: 0;
+    }
+    .sa-sidebar .sidebar-brand {
+      padding: 1.5rem 1.2rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .sa-sidebar .sidebar-brand h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 .2rem; color: #fff; }
+    .sa-sidebar .sidebar-brand p  { font-size: 0.72rem; color: rgba(255,255,255,.45); margin: 0; text-transform: uppercase; letter-spacing: .08em; }
 
-        .card {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-        }
+    .sa-sidebar nav { flex: 1; padding: 0.75rem 0; overflow-y: auto; }
+    .sa-nav-item {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.7rem 1.2rem; font-size: 0.875rem; font-weight: 500;
+      color: rgba(255,255,255,.6); cursor: pointer; border: none;
+      background: transparent; width: 100%; text-align: left;
+      border-left: 3px solid transparent; transition: all .18s; text-decoration: none;
+    }
+    .sa-nav-item:hover { background: rgba(255,255,255,.06); color: #fff; }
+    .sa-nav-item.active { background: rgba(255,255,255,.1); color: #fff; border-left-color: #4f46e5; }
+    .sa-nav-item .nav-icon { width: 20px; text-align: center; font-size: 0.95rem; }
 
-        .status-badge {
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.875rem;
-            font-weight: bold;
-        }
+    .sa-sidebar .sidebar-footer {
+      padding: 1rem 1.2rem;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+    .sa-sidebar .sidebar-footer .logout-btn {
+      width: 100%; padding: 0.6rem; border-radius: 8px; border: 1px solid rgba(220,38,38,.4);
+      background: rgba(220,38,38,.1); color: #f87171; font-size: 0.85rem;
+      font-weight: 600; cursor: pointer; transition: background .18s;
+    }
+    .sa-sidebar .sidebar-footer .logout-btn:hover { background: rgba(220,38,38,.25); }
 
-        .status-active {
-            background: #d4edda;
-            color: #155724;
-        }
+    /* ---------- Main content ---------- */
+    .sa-main { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 100vh; }
+    .sa-topbar {
+      background: #fff; padding: 0 2rem; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid #e5e7eb; box-shadow: 0 1px 4px rgba(0,0,0,.06);
+      position: sticky; top: 0; z-index: 9;
+    }
+    .sa-topbar h1 { font-size: 1rem; font-weight: 700; color: #1a1f2e; margin: 0; }
+    .sa-topbar .topbar-right { display: flex; align-items: center; gap: 1rem; }
+    .sa-topbar .admin-badge {
+      font-size: 0.78rem; background: linear-gradient(135deg,#4f46e5,#7c3aed);
+      color: #fff; padding: .25rem .65rem; border-radius: 20px; font-weight: 600;
+    }
 
-        .status-hold {
-            background: #fff3cd;
-            color: #856404;
-        }
+    .sa-content { padding: 1.75rem 2rem; flex: 1; }
 
-        .status-expired {
-            background: #f8d7da;
-            color: #721c24;
-        }
+    /* ---------- Tab panels ---------- */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
 
-        .btn-sm {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.875rem;
-        }
+    /* ---------- Cards ---------- */
+    .sa-card {
+      background: #fff; border-radius: 14px; overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07); border: 1px solid #e5e7eb;
+      margin-bottom: 1.5rem;
+    }
+    .sa-card-header {
+      padding: 1rem 1.5rem;
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .sa-card-header h2 { color: #fff; font-size: 0.95rem; font-weight: 700; margin: 0; }
+    .sa-card-header .header-count {
+      background: rgba(255,255,255,.2); color: #fff; font-size: 0.75rem;
+      padding: .2rem .55rem; border-radius: 12px; font-weight: 600;
+    }
+    .sa-card-body { padding: 1.25rem 1.5rem; }
 
-        /* Login Overlay */
-        #login-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #2c3e50;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
+    /* ---------- Summary stat cards ---------- */
+    .stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card {
+      border-radius: 12px; padding: 1.1rem 1.25rem;
+      display: flex; justify-content: space-between; align-items: flex-start;
+    }
+    .stat-card-blue   { background: linear-gradient(135deg,#eff6ff,#dbeafe); }
+    .stat-card-green  { background: linear-gradient(135deg,#f0fdf4,#dcfce7); }
+    .stat-card-amber  { background: linear-gradient(135deg,#fffbeb,#fef3c7); }
+    .stat-card-red    { background: linear-gradient(135deg,#fef2f2,#fee2e2); }
+    .stat-value { font-size: 1.6rem; font-weight: 800; margin: 0.1rem 0 0; }
+    .stat-card-blue  .stat-value { color: #1d4ed8; }
+    .stat-card-green .stat-value { color: #15803d; }
+    .stat-card-amber .stat-value { color: #b45309; }
+    .stat-card-red   .stat-value { color: #b91c1c; }
+    .stat-label { font-size: 0.78rem; font-weight: 600; }
+    .stat-card-blue  .stat-label { color: #3b82f6; }
+    .stat-card-green .stat-label { color: #22c55e; }
+    .stat-card-amber .stat-label { color: #f59e0b; }
+    .stat-card-red   .stat-label { color: #ef4444; }
+    .stat-icon { font-size: 1.5rem; opacity: .7; }
 
-        .login-box {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
-    </style>
+    /* ---------- Table ---------- */
+    .sa-table { width: 100%; border-collapse: collapse; font-size: 0.855rem; }
+    .sa-table thead th {
+      background: #f8fafc; color: #4b5563; font-weight: 600; font-size: 0.78rem;
+      text-transform: uppercase; letter-spacing: .04em;
+      padding: 0.65rem 1rem; border-bottom: 2px solid #e5e7eb; text-align: left;
+      white-space: nowrap;
+    }
+    .sa-table tbody tr { border-bottom: 1px solid #f3f4f6; transition: background .12s; }
+    .sa-table tbody tr:hover { background: #fafbff; }
+    .sa-table td { padding: 0.7rem 1rem; vertical-align: middle; }
+    .sa-table td:last-child { white-space: nowrap; }
+
+    /* ---------- Badges ---------- */
+    .badge {
+      display: inline-block; padding: .22rem .6rem; border-radius: 20px;
+      font-size: 0.73rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+    }
+    .badge-active   { background: #dcfce7; color: #15803d; }
+    .badge-on-hold  { background: #fef3c7; color: #b45309; }
+    .badge-suspended{ background: #fee2e2; color: #b91c1c; }
+    .badge-expired  { background: #f3f4f6; color: #6b7280; }
+    .badge-plan     { background: #ede9fe; color: #6d28d9; }
+    .badge-trial    { background: #dbeafe; color: #1d4ed8; }
+
+    /* ---------- Action buttons ---------- */
+    .action-btn {
+      display: inline-flex; align-items: center; gap: .3rem;
+      padding: .28rem .6rem; border-radius: 6px; border: none;
+      font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: opacity .15s;
+      text-decoration: none; white-space: nowrap;
+    }
+    .action-btn:hover { opacity: 0.8; }
+    .action-btn-green  { background: #dcfce7; color: #15803d; }
+    .action-btn-red    { background: #fee2e2; color: #b91c1c; }
+    .action-btn-amber  { background: #fef3c7; color: #b45309; }
+    .action-btn-blue   { background: #dbeafe; color: #1d4ed8; }
+    .action-btn-purple { background: #ede9fe; color: #6d28d9; }
+    .action-btn-gray   { background: #f3f4f6; color: #374151; }
+    .action-btn-cyan   { background: #cffafe; color: #0e7490; }
+    .action-btn-indigo { background: #e0e7ff; color: #4338ca; }
+
+    .actions-wrap { display: flex; flex-wrap: wrap; gap: 4px; }
+
+    /* ---------- Forms ---------- */
+    .sa-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .sa-form-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .sa-form-group { display: flex; flex-direction: column; gap: .35rem; }
+    .sa-form-group label { font-size: 0.8rem; font-weight: 600; color: #374151; }
+    .sa-form-group input,
+    .sa-form-group select,
+    .sa-form-group textarea {
+      padding: .55rem .75rem; border: 1px solid #d1d5db; border-radius: 8px;
+      font-size: 0.88rem; outline: none; transition: border-color .2s;
+      background: #fff; color: #1f2937;
+    }
+    .sa-form-group input:focus,
+    .sa-form-group select:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,.1); }
+    .sa-form-group.full { grid-column: 1 / -1; }
+
+    .sa-submit-btn {
+      padding: .65rem 1.5rem; border-radius: 8px; border: none;
+      background: linear-gradient(135deg,#4f46e5,#7c3aed); color: #fff;
+      font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: opacity .2s;
+    }
+    .sa-submit-btn:hover { opacity: 0.88; }
+
+    /* ---------- Modals ---------- */
+    .sa-modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.55); backdrop-filter: blur(3px);
+      z-index: 500; justify-content: center; align-items: center;
+    }
+    .sa-modal-overlay.open { display: flex; }
+    .sa-modal {
+      background: #fff; border-radius: 14px; width: 100%;
+      max-width: 480px; box-shadow: 0 25px 60px rgba(0,0,0,.3);
+      animation: saModalIn .22s ease;
+    }
+    .sa-modal.wide { max-width: 640px; }
+    @keyframes saModalIn { from { opacity:0; transform: scale(.94) translateY(-8px); } to { opacity:1; transform: scale(1) translateY(0); } }
+    .sa-modal-header {
+      padding: 1rem 1.25rem;
+      background: linear-gradient(135deg,#4f46e5,#7c3aed);
+      border-radius: 14px 14px 0 0;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .sa-modal-header h3 { color: #fff; font-size: 0.95rem; font-weight: 700; margin: 0; }
+    .sa-modal-close {
+      background: rgba(255,255,255,.15); border: none; color: #fff;
+      width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+      font-size: 1rem; display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .sa-modal-close:hover { background: rgba(255,255,255,.3); }
+    .sa-modal-body { padding: 1.25rem 1.5rem; }
+    .sa-modal-footer { padding: 0 1.5rem 1.25rem; display: flex; justify-content: flex-end; gap: .5rem; }
+    .sa-modal-footer .btn-cancel {
+      padding: .55rem 1.1rem; border-radius: 8px; border: 1px solid #d1d5db;
+      background: #fff; color: #374151; font-weight: 600; font-size: 0.85rem; cursor: pointer;
+    }
+    .sa-modal-footer .btn-confirm {
+      padding: .55rem 1.25rem; border-radius: 8px; border: none;
+      background: linear-gradient(135deg,#4f46e5,#7c3aed); color: #fff;
+      font-weight: 700; font-size: 0.85rem; cursor: pointer;
+    }
+    .sa-modal-footer .btn-confirm-danger {
+      padding: .55rem 1.25rem; border-radius: 8px; border: none;
+      background: linear-gradient(135deg,#dc2626,#b91c1c); color: #fff;
+      font-weight: 700; font-size: 0.85rem; cursor: pointer;
+    }
+    .sa-modal-footer .btn-confirm-amber {
+      padding: .55rem 1.25rem; border-radius: 8px; border: none;
+      background: linear-gradient(135deg,#d97706,#b45309); color: #fff;
+      font-weight: 700; font-size: 0.85rem; cursor: pointer;
+    }
+
+    /* ---------- Stats modal grid ---------- */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .75rem; }
+    .stats-item {
+      background: #f8fafc; border-radius: 10px; padding: .85rem;
+      text-align: center; border: 1px solid #e5e7eb;
+    }
+    .stats-item .sv { font-size: 1.4rem; font-weight: 800; color: #4f46e5; }
+    .stats-item .sl { font-size: 0.72rem; color: #6b7280; font-weight: 600; margin-top: .15rem; text-transform: uppercase; letter-spacing: .05em; }
+
+    /* ---------- Plans table ---------- */
+    .plan-price { font-weight: 700; color: #4f46e5; }
+
+    /* ---------- Subscription end date ---------- */
+    .sub-expired { color: #dc2626; font-weight: 700; }
+    .sub-soon    { color: #d97706; font-weight: 600; }
+    .sub-ok      { color: #15803d; }
+
+    /* ---------- Assign plan inline ---------- */
+    .inline-plan-select { padding: .25rem .5rem; border-radius: 6px; border: 1px solid #d1d5db; font-size: 0.78rem; }
+
+    /* ---------- Toast ---------- */
+    #sa-toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999;
+      background: #1a1f2e; color: #fff; padding: .75rem 1.25rem;
+      border-radius: 10px; font-size: 0.875rem; font-weight: 600;
+      box-shadow: 0 8px 30px rgba(0,0,0,.3); opacity: 0; pointer-events: none;
+      transition: opacity .3s; display: flex; align-items: center; gap: .5rem;
+    }
+    #sa-toast.show { opacity: 1; }
+    #sa-toast.success { border-left: 4px solid #22c55e; }
+    #sa-toast.error   { border-left: 4px solid #ef4444; }
+    #sa-toast.info    { border-left: 4px solid #3b82f6; }
+
+    /* ---------- Empty state ---------- */
+    .empty-state { text-align: center; padding: 2.5rem 1rem; color: #9ca3af; }
+    .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: .5rem; }
+
+    /* ---------- Loading spinner ---------- */
+    .spinner {
+      width: 28px; height: 28px; border: 3px solid #e5e7eb;
+      border-top-color: #4f46e5; border-radius: 50%;
+      animation: spin .7s linear infinite; margin: 1.5rem auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 900px) {
+      .sa-sidebar { width: 60px; min-width: 60px; }
+      .sa-nav-item span.nav-label { display: none; }
+      .sa-sidebar .sidebar-brand p,
+      .sa-sidebar .sidebar-brand h2 { display: none; }
+      .stat-grid { grid-template-columns: 1fr 1fr; }
+      .sa-form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
-
 <body>
 
-    <!-- Login Overlay -->
-    <div id="login-overlay">
-        <div class="login-box">
-            <h2>Super Admin Login</h2>
-            <form id="login-form">
-                <div class="form-group">
-                    <input type="text" id="username" placeholder="Username" required
-                        style="width: 100%; padding: 10px; margin-bottom: 10px;">
-                </div>
-                <div class="form-group">
-                    <input type="password" id="password" placeholder="Password" required
-                        style="width: 100%; padding: 10px; margin-bottom: 20px;">
-                </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
-            </form>
-        </div>
+<!-- ============================================================
+     LOGIN OVERLAY
+     ============================================================ -->
+<div id="login-overlay">
+  <div class="login-card">
+    <div class="brand-icon">🔐</div>
+    <h2>Super Admin Portal</h2>
+    <p>Tashgheel POS — Control Center</p>
+    <form id="login-form" autocomplete="off">
+      <input type="text"     id="sa-username" placeholder="Username" required autocomplete="username">
+      <input type="password" id="sa-password" placeholder="Password" required autocomplete="current-password">
+      <button type="submit" class="login-btn" id="login-btn">Sign In</button>
+      <div id="login-error">❌ Invalid credentials. Please try again.</div>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================================
+     APP SHELL
+     ============================================================ -->
+<div id="app-shell" style="display:none; flex-direction:row; min-height:100vh;">
+
+  <!-- SIDEBAR -->
+  <aside class="sa-sidebar">
+    <div class="sidebar-brand">
+      <h2>🏪 Tashgheel POS</h2>
+      <p>Super Admin</p>
+    </div>
+    <nav>
+      <button class="sa-nav-item active" onclick="showTab('tenants')" data-tab="tenants">
+        <span class="nav-icon"><i class="fas fa-building"></i></span>
+        <span class="nav-label">Tenants</span>
+      </button>
+      <button class="sa-nav-item" onclick="showTab('create-tenant')" data-tab="create-tenant">
+        <span class="nav-icon"><i class="fas fa-plus-circle"></i></span>
+        <span class="nav-label">Create Tenant</span>
+      </button>
+      <button class="sa-nav-item" onclick="showTab('plans')" data-tab="plans">
+        <span class="nav-icon"><i class="fas fa-layer-group"></i></span>
+        <span class="nav-label">Plans</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="logout-btn" onclick="logout()">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="sa-main">
+    <div class="sa-topbar">
+      <h1 id="topbar-title">🏢 Tenants Management</h1>
+      <div class="topbar-right">
+        <span class="admin-badge">⚡ Super Admin</span>
+      </div>
     </div>
 
-    <!-- Dashboard Content -->
-    <div class="super-admin-container" id="dashboard-content" style="display: none;">
-        <div class="header">
-            <h1>Super Admin Dashboard</h1>
-            <button onclick="logout()" class="btn btn-danger">Logout</button>
-        </div>
+    <div class="sa-content">
 
-        <div class="card">
-            <h2>Clients Management</h2>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Business Name</th>
-                        <th>Email / Phone</th>
-                        <th>Status</th>
-                        <th>Subscription Ends</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="tenants-table">
-                    <!-- Populated by JS -->
-                </tbody>
-            </table>
-        </div>
-    </div>
+      <!-- ========== TAB: TENANTS ========== -->
+      <div id="tab-tenants" class="tab-panel active">
 
-    <!-- Extend Modal -->
-    <div id="extendModal" class="modal">
-        <div class="modal-content">
-            <h3>Extend Subscription</h3>
-            <select id="extendDuration" style="width: 100%; padding: 10px; margin: 10px 0;">
-                <option value="1">1 Month</option>
-                <option value="3">3 Months</option>
-                <option value="6">6 Months</option>
-                <option value="12">1 Year</option>
-            </select>
-            <div style="text-align: right;">
-                <button onclick="closeModal('extendModal')" class="btn btn-secondary">Cancel</button>
-                <button onclick="confirmExtend()" class="btn btn-success">Confirm</button>
+        <!-- Stats Row -->
+        <div class="stat-grid" id="tenant-stats-row">
+          <div class="stat-card stat-card-blue">
+            <div>
+              <div class="stat-label">Total Tenants</div>
+              <div class="stat-value" id="stat-total">—</div>
             </div>
+            <div class="stat-icon">🏢</div>
+          </div>
+          <div class="stat-card stat-card-green">
+            <div>
+              <div class="stat-label">Active</div>
+              <div class="stat-value" id="stat-active">—</div>
+            </div>
+            <div class="stat-icon">✅</div>
+          </div>
+          <div class="stat-card stat-card-amber">
+            <div>
+              <div class="stat-label">On Hold / Suspended</div>
+              <div class="stat-value" id="stat-hold">—</div>
+            </div>
+            <div class="stat-icon">⏸️</div>
+          </div>
+          <div class="stat-card stat-card-red">
+            <div>
+              <div class="stat-label">Expired</div>
+              <div class="stat-value" id="stat-expired">—</div>
+            </div>
+            <div class="stat-icon">⚠️</div>
+          </div>
         </div>
+
+        <!-- Tenants Table Card -->
+        <div class="sa-card">
+          <div class="sa-card-header">
+            <h2><i class="fas fa-table" style="margin-right:.4rem;"></i>All Tenants</h2>
+            <div style="display:flex;align-items:center;gap:.75rem;">
+              <span class="header-count" id="tenant-count-badge">0 tenants</span>
+              <button onclick="loadTenants()" style="background:rgba(255,255,255,.18);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;">
+                <i class="fas fa-sync-alt"></i> Refresh
+              </button>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="sa-table">
+              <thead>
+                <tr>
+                  <th>Business Name</th>
+                  <th>Email / Phone</th>
+                  <th>Plan</th>
+                  <th>Status</th>
+                  <th>Subscription End</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tenants-tbody">
+                <tr><td colspan="6"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== TAB: CREATE TENANT ========== -->
+      <div id="tab-create-tenant" class="tab-panel">
+        <div class="sa-card">
+          <div class="sa-card-header">
+            <h2><i class="fas fa-user-plus" style="margin-right:.4rem;"></i>Create New Tenant</h2>
+          </div>
+          <div class="sa-card-body">
+            <form id="create-tenant-form" onsubmit="handleCreateTenant(event)">
+              <div class="sa-form-grid">
+                <div class="sa-form-group">
+                  <label>Business Name *</label>
+                  <input type="text" name="businessName" required placeholder="e.g. Cairo Retail Co.">
+                </div>
+                <div class="sa-form-group">
+                  <label>Email *</label>
+                  <input type="email" name="email" required placeholder="admin@business.com">
+                </div>
+                <div class="sa-form-group">
+                  <label>Phone</label>
+                  <input type="text" name="phone" placeholder="+20 123 456 7890">
+                </div>
+                <div class="sa-form-group">
+                  <label>Subscription Plan</label>
+                  <select name="planId" id="ct-plan-select">
+                    <option value="">— No Plan (Trial) —</option>
+                  </select>
+                </div>
+                <div class="sa-form-group">
+                  <label>Admin Username *</label>
+                  <input type="text" name="adminUsername" required placeholder="admin">
+                </div>
+                <div class="sa-form-group">
+                  <label>Admin Password *</label>
+                  <input type="password" name="adminPassword" required placeholder="Min 6 characters">
+                </div>
+                <div class="sa-form-group">
+                  <label>Trial Days</label>
+                  <input type="number" name="trialDays" value="14" min="0" max="365">
+                </div>
+                <div class="sa-form-group">
+                  <label>Max Branches</label>
+                  <input type="number" name="maxBranches" value="3" min="1">
+                </div>
+                <div class="sa-form-group">
+                  <label>Max Users</label>
+                  <input type="number" name="maxUsers" value="10" min="1">
+                </div>
+                <div class="sa-form-group full" style="padding-top:.5rem; display:flex; justify-content:flex-end; gap:.75rem;">
+                  <button type="reset" class="sa-modal-footer btn-cancel" style="padding:.65rem 1.25rem;">Clear</button>
+                  <button type="submit" class="sa-submit-btn">
+                    <i class="fas fa-plus"></i> Create Tenant
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== TAB: PLANS ========== -->
+      <div id="tab-plans" class="tab-panel">
+
+        <!-- Existing Plans -->
+        <div class="sa-card">
+          <div class="sa-card-header">
+            <h2><i class="fas fa-layer-group" style="margin-right:.4rem;"></i>Subscription Plans</h2>
+            <button onclick="loadPlans()" style="background:rgba(255,255,255,.18);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;">
+              <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="sa-table">
+              <thead>
+                <tr>
+                  <th>Name (EN)</th>
+                  <th>Name (AR)</th>
+                  <th>Max Branches</th>
+                  <th>Max Users</th>
+                  <th>Storage GB</th>
+                  <th>Monthly Price</th>
+                  <th>Yearly Price</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="plans-tbody">
+                <tr><td colspan="8"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Add Plan Form -->
+        <div class="sa-card">
+          <div class="sa-card-header">
+            <h2><i class="fas fa-plus-circle" style="margin-right:.4rem;"></i>Add New Plan</h2>
+          </div>
+          <div class="sa-card-body">
+            <form id="add-plan-form" onsubmit="handleAddPlan(event)">
+              <div class="sa-form-grid cols-3">
+                <div class="sa-form-group">
+                  <label>Plan Name (EN) *</label>
+                  <input type="text" name="nameEn" required placeholder="e.g. Starter">
+                </div>
+                <div class="sa-form-group">
+                  <label>Plan Name (AR)</label>
+                  <input type="text" name="nameAr" placeholder="مثال: مبتدئ" dir="rtl">
+                </div>
+                <div class="sa-form-group">
+                  <label>Max Branches *</label>
+                  <input type="number" name="maxBranches" required value="1" min="1">
+                </div>
+                <div class="sa-form-group">
+                  <label>Max Users *</label>
+                  <input type="number" name="maxUsers" required value="5" min="1">
+                </div>
+                <div class="sa-form-group">
+                  <label>Storage (GB)</label>
+                  <input type="number" name="storageGb" value="5" min="1">
+                </div>
+                <div class="sa-form-group">
+                  <label>Monthly Price *</label>
+                  <input type="number" name="priceMonthly" required value="0" min="0" step="0.01">
+                </div>
+                <div class="sa-form-group">
+                  <label>Yearly Price *</label>
+                  <input type="number" name="priceYearly" required value="0" min="0" step="0.01">
+                </div>
+                <div class="sa-form-group" style="grid-column:3; align-self:flex-end;">
+                  <button type="submit" class="sa-submit-btn" style="width:100%;">
+                    <i class="fas fa-plus"></i> Add Plan
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+      </div><!-- /tab-plans -->
+
+    </div><!-- /sa-content -->
+  </main>
+</div><!-- /app-shell -->
+
+<!-- ============================================================
+     MODALS
+     ============================================================ -->
+
+<!-- Extend Subscription Modal -->
+<div id="modal-extend" class="sa-modal-overlay">
+  <div class="sa-modal">
+    <div class="sa-modal-header">
+      <h3>📅 Extend Subscription</h3>
+      <button class="sa-modal-close" onclick="closeModal('modal-extend')">✕</button>
     </div>
+    <div class="sa-modal-body">
+      <div class="sa-form-group">
+        <label>Months to Add</label>
+        <input type="number" id="extend-months" value="1" min="1" max="120" style="width:100%;">
+      </div>
+      <p style="font-size:.8rem;color:#6b7280;margin:.5rem 0 0;">
+        The subscription end date will be extended by the specified number of months.
+      </p>
+    </div>
+    <div class="sa-modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-extend')">Cancel</button>
+      <button class="btn-confirm" onclick="confirmExtend()">Confirm Extension</button>
+    </div>
+  </div>
+</div>
 
-    <script src="js/super-admin.js"></script>
+<!-- Reduce Subscription Modal -->
+<div id="modal-reduce" class="sa-modal-overlay">
+  <div class="sa-modal">
+    <div class="sa-modal-header" style="background:linear-gradient(135deg,#d97706,#b45309);">
+      <h3>⏱ Reduce Subscription</h3>
+      <button class="sa-modal-close" onclick="closeModal('modal-reduce')">✕</button>
+    </div>
+    <div class="sa-modal-body">
+      <div class="sa-form-group">
+        <label>Months to Reduce</label>
+        <input type="number" id="reduce-months" value="1" min="1" max="120" style="width:100%;">
+      </div>
+      <p style="font-size:.8rem;color:#dc2626;margin:.5rem 0 0;">
+        ⚠️ This will move the subscription end date backward.
+      </p>
+    </div>
+    <div class="sa-modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-reduce')">Cancel</button>
+      <button class="btn-confirm-amber" onclick="confirmReduce()">Confirm Reduction</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div id="modal-reset-password" class="sa-modal-overlay">
+  <div class="sa-modal">
+    <div class="sa-modal-header" style="background:linear-gradient(135deg,#0891b2,#0e7490);">
+      <h3>🔑 Reset Admin Password</h3>
+      <button class="sa-modal-close" onclick="closeModal('modal-reset-password')">✕</button>
+    </div>
+    <div class="sa-modal-body">
+      <div class="sa-form-group">
+        <label>New Password</label>
+        <input type="password" id="new-password-input" placeholder="Min 6 characters" style="width:100%;">
+      </div>
+      <div class="sa-form-group" style="margin-top:.75rem;">
+        <label>Confirm Password</label>
+        <input type="password" id="confirm-password-input" placeholder="Repeat password" style="width:100%;">
+      </div>
+    </div>
+    <div class="sa-modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-reset-password')">Cancel</button>
+      <button class="btn-confirm" style="background:linear-gradient(135deg,#0891b2,#0e7490);" onclick="confirmResetPassword()">Reset Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- View Stats Modal -->
+<div id="modal-stats" class="sa-modal-overlay">
+  <div class="sa-modal wide">
+    <div class="sa-modal-header" style="background:linear-gradient(135deg,#059669,#047857);">
+      <h3>📊 Tenant Statistics</h3>
+      <button class="sa-modal-close" onclick="closeModal('modal-stats')">✕</button>
+    </div>
+    <div class="sa-modal-body">
+      <p style="font-size:.8rem;color:#6b7280;margin:0 0 1rem;" id="stats-tenant-name">Loading...</p>
+      <div class="stats-grid" id="stats-grid-content">
+        <div class="stats-item"><div class="spinner"></div></div>
+      </div>
+    </div>
+    <div class="sa-modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-stats')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Assign Plan Modal -->
+<div id="modal-assign-plan" class="sa-modal-overlay">
+  <div class="sa-modal">
+    <div class="sa-modal-header" style="background:linear-gradient(135deg,#6d28d9,#4f46e5);">
+      <h3>🎯 Assign Plan</h3>
+      <button class="sa-modal-close" onclick="closeModal('modal-assign-plan')">✕</button>
+    </div>
+    <div class="sa-modal-body">
+      <div class="sa-form-group">
+        <label>Select Plan</label>
+        <select id="assign-plan-select" style="width:100%;padding:.6rem .75rem;border:1px solid #d1d5db;border-radius:8px;font-size:.88rem;">
+          <option value="">— Select Plan —</option>
+        </select>
+      </div>
+      <div class="sa-form-grid" style="margin-top:.75rem;">
+        <div class="sa-form-group">
+          <label>Max Branches</label>
+          <input type="number" id="assign-max-branches" value="3" min="1">
+        </div>
+        <div class="sa-form-group">
+          <label>Max Users</label>
+          <input type="number" id="assign-max-users" value="10" min="1">
+        </div>
+      </div>
+    </div>
+    <div class="sa-modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-assign-plan')">Cancel</button>
+      <button class="btn-confirm" onclick="confirmAssignPlan()">Assign Plan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Tenant Confirmation Modal -->
+<div id="modal-delete" class="sa-modal-overlay">
+  <div class="sa-modal">
+    <div class="sa-modal-header" style="background:linear-gradient(135deg,#dc2626,#b91c1c);">
+      <h3>🗑 Delete Tenant</h3>
+      <button class="sa-modal-close" onclick="closeModal('modal-delete')">✕</button>
+    </div>
+    <div class="sa-modal-body">
+      <p style="color:#1f2937;font-weight:600;margin:0 0 .5rem;">Are you absolutely sure?</p>
+      <p style="color:#6b7280;font-size:.875rem;margin:0 0 .75rem;">
+        This will <strong style="color:#dc2626;">permanently delete</strong> the tenant <strong id="delete-tenant-name">this tenant</strong> and ALL their data including sales, products, customers, and users.
+      </p>
+      <p style="color:#dc2626;font-size:.8rem;font-weight:600;">⚠️ This action CANNOT be undone.</p>
+      <div class="sa-form-group" style="margin-top:1rem;">
+        <label>Type <strong>DELETE</strong> to confirm</label>
+        <input type="text" id="delete-confirm-input" placeholder='Type "DELETE" here' style="width:100%;">
+      </div>
+    </div>
+    <div class="sa-modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-delete')">Cancel</button>
+      <button class="btn-confirm-danger" onclick="confirmDeleteTenant()">Delete Permanently</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Plan Modal -->
+<div id="modal-edit-plan" class="sa-modal-overlay">
+  <div class="sa-modal wide">
+    <div class="sa-modal-header">
+      <h3>✏️ Edit Plan</h3>
+      <button class="sa-modal-close" onclick="closeModal('modal-edit-plan')">✕</button>
+    </div>
+    <div class="sa-modal-body">
+      <input type="hidden" id="edit-plan-id">
+      <div class="sa-form-grid">
+        <div class="sa-form-group">
+          <label>Plan Name (EN) *</label>
+          <input type="text" id="edit-plan-nameEn" required>
+        </div>
+        <div class="sa-form-group">
+          <label>Plan Name (AR)</label>
+          <input type="text" id="edit-plan-nameAr" dir="rtl">
+        </div>
+        <div class="sa-form-group">
+          <label>Max Branches</label>
+          <input type="number" id="edit-plan-maxBranches" min="1">
+        </div>
+        <div class="sa-form-group">
+          <label>Max Users</label>
+          <input type="number" id="edit-plan-maxUsers" min="1">
+        </div>
+        <div class="sa-form-group">
+          <label>Storage (GB)</label>
+          <input type="number" id="edit-plan-storageGb" min="1">
+        </div>
+        <div class="sa-form-group">
+          <label>Monthly Price</label>
+          <input type="number" id="edit-plan-priceMonthly" min="0" step="0.01">
+        </div>
+        <div class="sa-form-group full">
+          <label>Yearly Price</label>
+          <input type="number" id="edit-plan-priceYearly" min="0" step="0.01">
+        </div>
+      </div>
+    </div>
+    <div class="sa-modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-edit-plan')">Cancel</button>
+      <button class="btn-confirm" onclick="confirmUpdatePlan()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="sa-toast"></div>
+
+<script src="js/super-admin.js"></script>
 </body>
-
 </html>

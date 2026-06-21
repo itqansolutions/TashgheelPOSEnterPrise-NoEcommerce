@@ -11,6 +11,27 @@ datasource db {
 }
 
 // ─────────────────────────────────────────────
+// SUBSCRIPTION PLAN
+// ─────────────────────────────────────────────
+model SubscriptionPlan {
+  id           String   @id @default(uuid())
+  name         String   @unique // e.g. Basic, Professional, Enterprise
+  nameAr       String?
+  maxBranches  Int      @default(1)
+  maxUsers     Int      @default(5)
+  storageGB    Float    @default(1)
+  features     Json     @default("[]") // list of enabled feature keys
+  priceMonthly Float    @default(0)
+  priceYearly  Float    @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  tenants Tenant[]
+
+  @@map("subscription_plans")
+}
+
+// ─────────────────────────────────────────────
 // TENANT (Multi-tenant root)
 // ─────────────────────────────────────────────
 model Tenant {
@@ -24,6 +45,14 @@ model Tenant {
   status             String    @default("active") // active | on_hold | suspended
   subscriptionPlan   String    @default("free_trial") // free_trial | monthly | yearly
 
+  // Plan limits (enforced by API)
+  subscriptionPlanId String?
+  maxBranches        Int     @default(3)
+  maxUsers           Int     @default(10)
+
+  // Manager security password (hashed) – used for sensitive POS operations
+  managerPassword    String?
+
   // Settings (flattened from nested object)
   shopName       String?
   shopAddress    String?
@@ -35,6 +64,7 @@ model Tenant {
   createdAt DateTime @default(now())
 
   // Relations
+  plan               SubscriptionPlan?    @relation(fields: [subscriptionPlanId], references: [id])
   users              User[]
   products           Product[]
   sales              Sale[]
@@ -49,6 +79,9 @@ model Tenant {
   ledgerTransactions LedgerTransaction[]
   stores             Store[]
   customers          Customer[]
+  suspendedInvoices  SuspendedInvoice[]
+  openOrders         OpenOrder[]
+  stockTransfers     StockTransfer[]
   ecommerceConfigs   EcommerceConfig[]
   onlineOrders       OnlineOrder[]
 
@@ -85,6 +118,7 @@ model Store {
   tenantId  String
   name      String
   location  String?
+  phone     String?
   createdAt DateTime @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -103,27 +137,21 @@ model Product {
   nameEn        String?
   barcode       String?
   price         Float
-  priceOnline   Float    @default(0)
-  priceDelivery Float    @default(0)
-  cost             Float    @default(0)
-  stock            Float    @default(0)
-  minStock         Float    @default(0)
+  cost          Float    @default(0)
+  stock         Float    @default(0)
+  minStock      Float    @default(0)
   
-  // Platform Pricing
-  priceAmazon      Float    @default(0)
-  priceNoon        Float    @default(0)
-  priceJumia       Float    @default(0)
-  priceWooCommerce Float    @default(0)
-
   hasVariants      Boolean  @default(false)
-  variants         Json     @default("[]") // [{ id, sku, barcode, price, priceAmazon, priceNoon, priceJumia, priceWooCommerce, cost, stock, imageUrl, attributes: { Size, Color } }]
+  variants         Json     @default("[]") // [{ id, sku, barcode, price, cost, stock, imageUrl, attributes: { Size, Color } }]
   stores           Json     @default("[]") // [{ storeId, stock }]
   trackStock    Boolean  @default(true)
   active        Boolean  @default(true)
   category      String?
   categoryEn    String?
+  supplier      String?
+  brand         String?
+  unit          String?
   imageUrl      String?
-  onlineActive  Boolean  @default(true)
   createdAt     DateTime @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -159,6 +187,7 @@ model Customer {
   phone         String
   email         String?
   address       String?
+  notes         String?
   loyaltyPoints Float    @default(0)
   balance       Float    @default(0)
   createdAt     DateTime @default(now())
@@ -189,13 +218,15 @@ model Supplier {
 }
 
 // ─────────────────────────────────────────────
-// SALESMAN
+// SALESMAN / EMPLOYEE
 // ─────────────────────────────────────────────
 model Salesman {
-  id       String @id @default(uuid())
+  id       String  @id @default(uuid())
   tenantId String
   name     String
-  targets  Json   @default("[]") // [{ month, year, target }]
+  jobTitle String?
+  phone    String?
+  targets  Json    @default("[]") // [{ month, year, target }]
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -250,8 +281,6 @@ model Sale {
   customerId    String?
   date          DateTime @default(now())
   orderType     String   @default("instore") // instore | online | delivery
-  platform      String   @default("local")   // local | woocommerce | jumia | amazon
-  onlineOrderId String?
   method        String   // cash | card | mobile | split | credit
   splitPayments Json     @default("[]") // [{ method, amount }]
   cashier       String
@@ -264,6 +293,7 @@ model Sale {
   status        String   @default("finished") // finished | returned | partial_returned | cancelled
   returns       Json     @default("[]") // [{ date, items, totalRefund, cashier }]
   returnReason  String?
+  voidReason    String?
 
   tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   shift  Shift?  @relation(fields: [shiftId], references: [id])
@@ -280,6 +310,8 @@ model Expense {
   id          String  @id @default(uuid())
   tenantId    String
   date        String  // ISO date string YYYY-MM-DD
+  category    String  @default("miscellaneous") // rent | salaries | electricity | transportation | miscellaneous
+  branchId    String?
   seller      String?
   description String
   amount      Float
@@ -449,3 +481,69 @@ model OnlineOrder {
   @@index([tenantId, status])
   @@map("online_orders")
 }
+
+// ─────────────────────────────────────────────
+// SUSPENDED INVOICE
+// ─────────────────────────────────────────────
+model SuspendedInvoice {
+  id         String   @id @default(uuid())
+  tenantId   String
+  storeId    String
+  cashier    String
+  customerId String?
+  items      Json     @default("[]") // [{ code, name, qty, price, discount, cost, variantId? }]
+  discount   Float    @default(0)
+  salesman   String?
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("suspended_invoices")
+}
+
+// ─────────────────────────────────────────────
+// OPEN ORDER
+// ─────────────────────────────────────────────
+model OpenOrder {
+  id          String   @id @default(uuid())
+  tenantId    String
+  storeId     String
+  customerId  String
+  receiptId   String
+  cashier     String
+  items       Json     @default("[]") // [{ productId, code, name, qty, price, cost, variantId? }]
+  totalAmount Float
+  paidAmount  Float    @default(0)
+  status      String   @default("open") // open | settled | cancelled
+  payments    Json     @default("[]") // [{ date, amount, method, notes }]
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("open_orders")
+}
+
+// ─────────────────────────────────────────────
+// STOCK TRANSFER
+// ─────────────────────────────────────────────
+model StockTransfer {
+  id            String   @id @default(uuid())
+  tenantId      String
+  fromStoreId   String
+  toStoreId     String
+  transferRef   String
+  transferredBy String
+  items         Json     @default("[]") // [{ productId, qty, variantId? }]
+  notes         String?
+  date          DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("stock_transfers")
+}
+
