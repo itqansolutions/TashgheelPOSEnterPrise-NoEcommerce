@@ -41,9 +41,17 @@
       <!-- Header -->
       <header class="bg-white/80 backdrop-blur-md px-8 py-4 shadow-sm border-b border-gray-200 flex justify-between items-center z-10 sticky top-0">
         <h1 class="text-xl font-bold text-brand-dark" data-i18n="price_list_title">📋 Price List</h1>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span id="welcomeText" data-i18n="welcome">Welcome,</span>
-          <span id="currentUserName" class="font-semibold">User</span>
+        <div class="flex items-center gap-3 bg-brand-purple/5 px-4 py-2 rounded-full border border-brand-purple/20">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-r from-brand-purple to-purple-400 flex items-center justify-center text-white font-bold shadow-md">
+            <i class="fas fa-user text-sm"></i>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-xs text-gray-500 leading-tight" id="welcomeText" data-i18n="welcome">Welcome,</span>
+            <div class="flex items-center gap-2">
+              <span id="currentUserName" class="text-sm font-bold text-brand-dark leading-tight">User</span>
+              <span id="userRole" class="text-[10px] bg-brand-blue text-white px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">cashier</span>
+            </div>
+          </div>
         </div>
       </header>
 

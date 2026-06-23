@@ -237,45 +237,46 @@
               <!-- Essential hidden/subtle selects for JS -->
               <div class="grid grid-cols-2 gap-2 mb-2">
                 <select id="orderTypeSelect" class="text-xs bg-gray-50 border border-gray-100 rounded-lg p-2" onchange="updateCartSummary()">
-                  <option value="instore">In-Store</option>
-                  <option value="delivery">Delivery</option>
+                  <option value="instore" data-i18n="order_instore">In-Store</option>
+                  <option value="online" data-i18n="order_online">Online</option>
+                  <option value="delivery" data-i18n="order_delivery">Delivery</option>
                 </select>
-                <select id="customerSelect" class="text-xs bg-gray-50 border border-gray-100 rounded-lg p-2"><option value="">Customer...</option></select>
+                <select id="customerSelect" class="text-xs bg-gray-50 border border-gray-100 rounded-lg p-2"><option value="" data-i18n="select_customer_placeholder">Customer...</option></select>
                 <select id="salesmanSelect" class="text-xs bg-gray-50 border border-gray-100 rounded-lg p-2 hidden"></select>
               </div>
 
-              <div class="flex justify-between text-sm text-gray-500 font-medium"><span>Subtotal</span> <span id="cartSubtotal" class="text-brand-dark">$0.00</span></div>
+              <div class="flex justify-between text-sm text-gray-500 font-medium"><span data-i18n="subtotal">Subtotal</span> <span id="cartSubtotal" class="text-brand-dark">$0.00</span></div>
               <div class="flex justify-between text-sm text-gray-500 font-medium items-center">
-                <span class="flex items-center gap-1 cursor-pointer hover:text-brand-blue transition-colors" onclick="openDiscountModal()">Discount <i class="fas fa-edit text-[10px]"></i></span> 
+                <span class="flex items-center gap-1 cursor-pointer hover:text-brand-blue transition-colors" onclick="openDiscountModal()"><span data-i18n="discount">Discount</span> <i class="fas fa-edit text-[10px]"></i></span> 
                 <span id="cartDiscount" class="text-brand-dark">$0.00</span>
               </div>
               <div class="flex justify-between text-sm text-gray-500 font-medium items-center">
-                <span><input type="checkbox" id="taxCheckbox" onchange="updateCartSummary()" class="mr-2 rounded text-brand-blue border-gray-300 focus:ring-brand-blue">Tax</span>
+                <span><input type="checkbox" id="taxCheckbox" onchange="updateCartSummary()" class="mr-2 rounded text-brand-blue border-gray-300 focus:ring-brand-blue"><span data-i18n="tax" id="taxLabel">Tax</span></span>
                 <span id="cartTax" class="text-brand-dark">$0.00</span>
               </div>
               
               <div class="h-px bg-gray-100 my-2"></div>
               
               <div class="flex justify-between items-center text-2xl font-extrabold text-brand-dark mb-6">
-                <span>Total</span>
+                <span data-i18n="total">Total</span>
                 <span id="cartTotal">$0.00</span>
               </div>
 
               <!-- Payment Buttons (Stacked like Image 1) -->
               <div class="flex flex-col gap-3">
-                <button class="w-full py-4 rounded-xl font-bold text-white bg-[#1877f2] hover:bg-blue-600 transition-all shadow-md shadow-blue-500/20" onclick="processSale('cash')" id="cashBtn">Cash</button>
-                <button class="w-full py-4 rounded-xl font-bold text-white bg-[#1877f2] hover:bg-blue-600 transition-all shadow-md shadow-blue-500/20" onclick="processSale('card')" id="cardBtn">Card</button>
-                <button class="w-full py-4 rounded-xl font-bold text-white bg-[#1877f2] hover:bg-blue-600 transition-all shadow-md shadow-blue-500/20" onclick="processSale('mobile')" id="mobileBtn">Mobile</button>
+                <button class="w-full py-4 rounded-xl font-bold text-white bg-[#1877f2] hover:bg-blue-600 transition-all shadow-md shadow-blue-500/20" onclick="processSale('cash')" id="cashBtn" data-i18n="pay_cash">Cash</button>
+                <button class="w-full py-4 rounded-xl font-bold text-white bg-[#1877f2] hover:bg-blue-600 transition-all shadow-md shadow-blue-500/20" onclick="processSale('card')" id="cardBtn" data-i18n="pay_card">Card</button>
+                <button class="w-full py-4 rounded-xl font-bold text-white bg-[#1877f2] hover:bg-blue-600 transition-all shadow-md shadow-blue-500/20" onclick="processSale('mobile')" id="mobileBtn" data-i18n="pay_mobile">Mobile</button>
               </div>
 
               <!-- Utilities -->
               <div class="grid grid-cols-2 gap-2 mt-2">
-                <button class="py-2 text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all" onclick="processSale('credit')" id="creditBtn">Credit</button>
-                <button class="py-2 text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all" onclick="openSplitPaymentModal()" id="splitBtn">Split</button>
-                <button class="py-2 text-xs font-bold text-orange-500 bg-orange-50 hover:bg-orange-100 rounded-lg transition-all" onclick="holdTransaction()" id="holdBtn">Hold</button>
-                <button class="py-2 text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 rounded-lg transition-all" onclick="clearCart()" id="clearCartBtn">Clear</button>
+                <button class="py-2 text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all" onclick="processSale('credit')" id="creditBtn" data-i18n="credit_btn">Credit</button>
+                <button class="py-2 text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all" onclick="openSplitPaymentModal()" id="splitBtn" data-i18n="pay_split">Split</button>
+                <button class="py-2 text-xs font-bold text-orange-500 bg-orange-50 hover:bg-orange-100 rounded-lg transition-all" onclick="holdTransaction()" id="holdBtn" data-i18n="hold_btn">Hold</button>
+                <button class="py-2 text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 rounded-lg transition-all" onclick="clearCart()" id="clearCartBtn" data-i18n="clear_btn">Clear</button>
                 <button class="col-span-2 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-all" onclick="createLayawayFromPOS()" id="layawayBtn" data-i18n="pos_layaway_btn">📝 Save as Layaway</button>
-                <button class="col-span-2 py-3 text-sm font-bold text-red-600 bg-red-100 hover:bg-red-200 rounded-xl transition-all mt-2" onclick="closeShift()" id="closeShiftBtn">Close Shift</button>
+                <button class="col-span-2 py-3 text-sm font-bold text-red-600 bg-red-100 hover:bg-red-200 rounded-xl transition-all mt-2" onclick="closeShift()" id="closeShiftBtn" data-i18n="close_shift_now">Close Shift</button>
               </div>
             </div>
           </div>

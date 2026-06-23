@@ -488,20 +488,30 @@ async function checkTrialStatus() {
       } else if (data.daysRemaining <= 3) {
         // Show warning banner
         const banner = document.createElement('div');
+        const lang = localStorage.getItem('pos_language') || 'en';
+        const t = (en, ar) => (lang === 'ar' ? ar : en);
+        
         banner.style.cssText = `
-background: ${data.daysRemaining <= 1 ? '#e74c3c' : '#f39c12'};
-color: white;
-text - align: center;
-padding: 10px;
-font - weight: bold;
-position: sticky;
-top: 0;
-z - index: 999;
-`;
+          background: ${data.daysRemaining <= 1 ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #f59e0b, #d97706)'};
+          color: white;
+          text-align: center;
+          padding: 12px 20px;
+          font-weight: bold;
+          position: sticky;
+          top: 0;
+          z-index: 9999;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+          font-size: 0.85rem;
+          backdrop-filter: blur(10px);
+        `;
         banner.innerHTML = `
-          ⚠️ Trial Version: ${data.daysRemaining} days remaining. 
-          <a href = "tel:+201126522373" style = "color:white;text-decoration:underline;margin-left:10px;" > Contact to Activate</a>
-  `;
+          <div style="display:flex; justify-content:center; align-items:center; gap: 10px;">
+            <span>⚠️ ${t('Trial Version:', 'نسخة تجريبية:')} ${data.daysRemaining} ${t('days remaining.', 'أيام متبقية.')}</span>
+            <a href="tel:+201126522373" style="background:rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; color:white; text-decoration:none; font-size: 0.75rem; transition: all 0.2s; border: 1px solid rgba(255,255,255,0.4);">
+              ${t('Contact to Activate', 'تواصل للتفعيل')}
+            </a>
+          </div>
+        `;
         document.body.prepend(banner);
       }
     }
@@ -569,9 +579,12 @@ function renderProducts() {
   const grid = document.getElementById("productGrid");
   if (!grid) return;
   grid.innerHTML = "";
+  
+  const lang = localStorage.getItem('pos_language') || 'en';
+  const t = (en, ar) => (lang === 'ar' ? ar : en);
 
   if (filteredProducts.length === 0) {
-    grid.innerHTML = '<p style="text-align:center; color:#666;">No products found</p>';
+    grid.innerHTML = `<p style="text-align:center; color:#666;">${t('No products found', 'لا توجد منتجات')}</p>`;
     return;
   }
 
@@ -591,7 +604,7 @@ function renderProducts() {
     // Clicking anywhere on the card adds to cart
     div.onclick = () => addToCart({ ...product, currentStock });
     
-    const stockDisplay = (product.trackStock === false) ? '<span style="font-weight: bold; color:#10b981;">∞</span>' : `Stock: ${currentStock}`;
+    const stockDisplay = (product.trackStock === false) ? '<span style="font-weight: bold; color:#10b981;">∞</span>' : `${t('Stock:', 'المخزون:')} ${currentStock}`;
     
     const imageHtml = product.imageUrl 
       ? `<img src="${product.imageUrl}" alt="${product.name}">`
@@ -602,13 +615,13 @@ function renderProducts() {
         ${imageHtml}
       </div>
       <div class="info">
-        <span class="category">${product.category || 'General'}</span>
+        <span class="category">${product.category || (lang === 'ar' ? 'عام' : 'General')}</span>
         <h4 class="title">${product.name}</h4>
         <div class="flex justify-between items-center mt-auto">
           <p class="price">$${product.price.toFixed(2)}</p>
           <span class="stock text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100">${stockDisplay}</span>
         </div>
-        <button class="add-btn mt-2">Add to Cart</button>
+        <button class="add-btn mt-2">${t('Add to Cart', 'إضافة للسلة')}</button>
       </div>
     `;
     grid.appendChild(div);
@@ -717,7 +730,10 @@ function addToCart(product) {
       const title = document.getElementById('variantModalTitle');
       const options = document.getElementById('variantOptions');
       
-      title.textContent = `Select Option for ${product.name}`;
+      const lang = localStorage.getItem('pos_language') || 'en';
+      const t = (en, ar) => (lang === 'ar' ? ar : en);
+      
+      title.textContent = `${t('Select Option for', 'اختر خيار لـ')} ${product.name}`;
       options.innerHTML = '';
       
       product.variants.forEach(v => {
@@ -728,7 +744,7 @@ function addToCart(product) {
                 <span>${Object.values(v.attributes).join(' / ')}</span>
                 <span class="text-brand-blue">${(v.price || product.price).toFixed(2)}</span>
             </div>
-            <div class="text-xs text-gray-500 font-normal mt-1">Stock: ${v.stock} | Barcode: ${v.barcode || v.sku}</div>
+            <div class="text-xs text-gray-500 font-normal mt-1">${t('Stock:', 'المخزون:')} ${v.stock} | ${t('Barcode:', 'الباركود:')} ${v.barcode || v.sku}</div>
           `;
           btn.onclick = () => selectVariant(product.id, v.sku || v.barcode);
           options.appendChild(btn);

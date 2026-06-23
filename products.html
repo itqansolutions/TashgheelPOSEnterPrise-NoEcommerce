@@ -52,10 +52,17 @@
     <main style="flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 100vh; background-color: transparent; position: relative;">
       <header class="bg-white/80 backdrop-blur-md px-8 py-4 shadow-sm border-b border-gray-200 flex justify-between items-center z-10 sticky top-0">
         <h1 class="text-xl font-bold text-brand-dark" data-i18n="products">📦 Products</h1>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span id="welcomeText" data-i18n="welcome">Welcome,</span>
-          <span id="currentUserName" class="font-semibold">User</span>
-          <span id="userRole" class="user-role">cashier</span>
+        <div class="flex items-center gap-3 bg-brand-purple/5 px-4 py-2 rounded-full border border-brand-purple/20">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-r from-brand-purple to-purple-400 flex items-center justify-center text-white font-bold shadow-md">
+            <i class="fas fa-user text-sm"></i>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-xs text-gray-500 leading-tight" id="welcomeText" data-i18n="welcome">Welcome,</span>
+            <div class="flex items-center gap-2">
+              <span id="currentUserName" class="text-sm font-bold text-brand-dark leading-tight">User</span>
+              <span id="userRole" class="text-[10px] bg-brand-blue text-white px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">cashier</span>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -103,7 +110,7 @@
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 col-span-2">
                 <div class="form-group">
-                  <label class="text-xs font-bold text-gray-500 uppercase mb-2 block">Product Image URL</label>
+                  <label class="text-xs font-bold text-gray-500 uppercase mb-2 block" data-i18n="product_image_url">Product Image URL</label>
                   <input type="text" id="product-image-url" class="premium-input" placeholder="https://example.com/image.jpg">
                 </div>
                 <div class="flex items-center gap-6 mt-8 mb-4">
@@ -113,25 +120,25 @@
                   </label>
                   <label class="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" id="product-has-variants" class="w-5 h-5 rounded text-brand-purple focus:ring-brand-purple">
-                    <span class="text-sm font-medium text-brand-purple font-bold">Has Variants (Colors/Sizes)</span>
+                    <span class="text-sm font-medium text-brand-purple font-bold" data-i18n="has_variants">Has Variants (Colors/Sizes)</span>
                   </label>
                 </div>
 
                 <!-- Variants Configuration Area -->
                 <div id="variants-section" class="col-span-2 hidden bg-brand-purple/5 border border-brand-purple/20 p-6 rounded-2xl mb-8">
-                  <h4 class="text-sm font-bold text-brand-dark mb-4">Product Variants</h4>
+                  <h4 class="text-sm font-bold text-brand-dark mb-4" data-i18n="product_variants">Product Variants</h4>
                   
                   <div class="flex gap-4 mb-4">
                     <div class="flex-1">
-                      <label class="text-xs font-bold text-gray-500 uppercase mb-2 block">Option Name (e.g. Color)</label>
+                      <label class="text-xs font-bold text-gray-500 uppercase mb-2 block" data-i18n="option_name">Option Name (e.g. Color)</label>
                       <input type="text" id="variant-opt-name" class="premium-input" placeholder="Size, Color, etc.">
                     </div>
                     <div class="flex-[2]">
-                      <label class="text-xs font-bold text-gray-500 uppercase mb-2 block">Values (comma separated)</label>
+                      <label class="text-xs font-bold text-gray-500 uppercase mb-2 block" data-i18n="option_values">Values (comma separated)</label>
                       <input type="text" id="variant-opt-values" class="premium-input" placeholder="Red, Blue, Green">
                     </div>
                     <div class="flex items-end">
-                      <button type="button" onclick="generateVariants()" class="bg-brand-purple text-white px-4 py-2 rounded-lg font-bold hover:bg-purple-700">Generate</button>
+                      <button type="button" onclick="generateVariants()" class="bg-brand-purple text-white px-4 py-2 rounded-lg font-bold hover:bg-purple-700" data-i18n="generate">Generate</button>
                     </div>
                   </div>
 
@@ -139,12 +146,12 @@
                     <table class="w-full text-sm text-left">
                       <thead class="text-xs text-gray-500 uppercase bg-white/50">
                         <tr>
-                           <th class="px-4 py-2">Variant</th>
-                           <th class="px-4 py-2">Barcode</th>
-                           <th class="px-4 py-2 hidden">Cost</th>
-                           <th class="px-4 py-2 hidden">Stock</th>
-                           <th class="px-4 py-2 text-brand-green">Local Price</th>
-                           <th class="px-4 py-2">Image URL</th>
+                           <th class="px-4 py-2" data-i18n="variant">Variant</th>
+                           <th class="px-4 py-2" data-i18n="barcode">Barcode</th>
+                           <th class="px-4 py-2 hidden" data-i18n="cost">Cost</th>
+                           <th class="px-4 py-2 hidden" data-i18n="stock">Stock</th>
+                           <th class="px-4 py-2 text-brand-green" data-i18n="local_price">Local Price</th>
+                           <th class="px-4 py-2" data-i18n="image_url">Image URL</th>
                            <th class="px-4 py-2"></th>
                         </tr>
                       </thead>
