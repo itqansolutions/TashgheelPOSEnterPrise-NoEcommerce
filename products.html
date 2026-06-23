@@ -84,14 +84,10 @@
                 </div>
               </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 col-span-2">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 col-span-2">
                 <div class="form-group">
                   <label class="text-xs font-bold text-gray-500 uppercase mb-2 block" data-i18n="price">In-Store Price</label>
                   <input type="number" step="0.01" id="product-price" class="premium-input" placeholder="0.00">
-                </div>
-                <div class="form-group">
-                  <label class="text-xs font-bold text-gray-500 uppercase mb-2 block">Online Price</label>
-                  <input type="number" step="0.01" id="product-price-online" class="premium-input" placeholder="0.00">
                 </div>
                 <div class="form-group">
                   <label class="text-xs font-bold text-gray-500 uppercase mb-2 block" data-i18n="cost">Cost Price</label>
@@ -103,26 +99,7 @@
                 </div>
               </div>
 
-              <!-- Multi-Platform Pricing -->
-              <h4 class="text-sm font-bold text-gray-500 uppercase mt-2 mb-4 col-span-2">Platform Pricing</h4>
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 col-span-2">
-                  <div class="form-group">
-                    <label class="text-xs font-bold text-brand-orange uppercase mb-2 block">Amazon Price</label>
-                    <input type="number" step="0.01" id="product-price-amazon" class="premium-input" placeholder="0.00">
-                  </div>
-                  <div class="form-group">
-                    <label class="text-xs font-bold text-brand-blue uppercase mb-2 block">Noon Price</label>
-                    <input type="number" step="0.01" id="product-price-noon" class="premium-input" placeholder="0.00">
-                  </div>
-                  <div class="form-group">
-                    <label class="text-xs font-bold text-brand-purple uppercase mb-2 block">Jumia Price</label>
-                    <input type="number" step="0.01" id="product-price-jumia" class="premium-input" placeholder="0.00">
-                  </div>
-                  <div class="form-group">
-                    <label class="text-xs font-bold text-gray-600 uppercase mb-2 block">WooCommerce Price</label>
-                    <input type="number" step="0.01" id="product-price-woo" class="premium-input" placeholder="0.00">
-                  </div>
-              </div>
+
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 col-span-2">
                 <div class="form-group">
@@ -133,10 +110,6 @@
                   <label class="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" id="product-track-stock" checked class="w-5 h-5 rounded text-brand-blue focus:ring-brand-blue">
                     <span class="text-sm font-medium text-gray-700" data-i18n="track_stock">Track Stock</span>
-                  </label>
-                  <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" id="product-online-active" checked class="w-5 h-5 rounded text-brand-blue focus:ring-brand-blue">
-                    <span class="text-sm font-medium text-brand-blue font-bold">Sync to Online</span>
                   </label>
                   <label class="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" id="product-has-variants" class="w-5 h-5 rounded text-brand-purple focus:ring-brand-purple">
@@ -166,17 +139,13 @@
                     <table class="w-full text-sm text-left">
                       <thead class="text-xs text-gray-500 uppercase bg-white/50">
                         <tr>
-                          <th class="px-4 py-2">Variant</th>
-                          <th class="px-4 py-2">Barcode</th>
-                          <th class="px-4 py-2">Cost</th>
-                          <th class="px-4 py-2">Stock</th>
-                          <th class="px-4 py-2 text-brand-green">Local Price</th>
-                          <th class="px-4 py-2 text-brand-orange">Amazon</th>
-                          <th class="px-4 py-2 text-brand-blue">Noon</th>
-                          <th class="px-4 py-2 text-brand-purple">Jumia</th>
-                          <th class="px-4 py-2 text-gray-600">WooCommerce</th>
-                          <th class="px-4 py-2">Image URL</th>
-                          <th class="px-4 py-2"></th>
+                           <th class="px-4 py-2">Variant</th>
+                           <th class="px-4 py-2">Barcode</th>
+                           <th class="px-4 py-2">Cost</th>
+                           <th class="px-4 py-2">Stock</th>
+                           <th class="px-4 py-2 text-brand-green">Local Price</th>
+                           <th class="px-4 py-2">Image URL</th>
+                           <th class="px-4 py-2"></th>
                         </tr>
                       </thead>
                       <tbody id="variants-table-body" class="divide-y divide-gray-200">
@@ -204,16 +173,12 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th data-i18n="product">Product</th>
-                  <th data-i18n="barcode">Barcode</th>
-                  <th data-i18n="category">Category</th>
-                  <th data-i18n="price" class="text-brand-green">Local Price</th>
-                  <th class="text-brand-orange">Amazon</th>
-                  <th class="text-brand-blue">Noon</th>
-                  <th class="text-brand-purple">Jumia</th>
-                  <th class="text-gray-600">WooCommerce</th>
-                  <th data-i18n="stock">Stock</th>
-                  <th data-i18n="actions">Actions</th>
+                   <th data-i18n="product">Product</th>
+                   <th data-i18n="barcode">Barcode</th>
+                   <th data-i18n="category">Category</th>
+                   <th data-i18n="price" class="text-brand-green">Local Price</th>
+                   <th data-i18n="stock">Stock</th>
+                   <th data-i18n="actions">Actions</th>
                 </tr>
               </thead>
               <tbody id="product-table-body">
@@ -270,37 +235,14 @@
           <label for="edit-product-price" data-i18n="price">In-Store Price:</label>
           <input type="number" id="edit-product-price" step="0.01" required>
         </div>
-        <div class="form-group">
-          <label for="edit-product-price-online" data-i18n="price_online">Online Price:</label>
-          <input type="number" id="edit-product-price-online" step="0.01">
-        </div>
-        <div class="form-group">
-          <label for="edit-product-price-amazon">Amazon Price:</label>
-          <input type="number" id="edit-product-price-amazon" step="0.01">
-        </div>
-        <div class="form-group">
-          <label for="edit-product-price-noon">Noon Price:</label>
-          <input type="number" id="edit-product-price-noon" step="0.01">
-        </div>
-        <div class="form-group">
-          <label for="edit-product-price-jumia">Jumia Price:</label>
-          <input type="number" id="edit-product-price-jumia" step="0.01">
-        </div>
-        <div class="form-group">
-          <label for="edit-product-price-woo">WooCommerce Price:</label>
-          <input type="number" id="edit-product-price-woo" step="0.01">
-        </div>
+
         <div class="form-group" style="grid-column: span 2;">
           <label for="edit-product-image-url">Image URL:</label>
           <input type="text" id="edit-product-image-url" placeholder="https://example.com/image.jpg">
         </div>
-        <div class="form-group" style="grid-column: span 1; display:flex; align-items:center; gap:8px;">
+        <div class="form-group" style="grid-column: span 2; display:flex; align-items:center; gap:8px;">
           <input type="checkbox" id="edit-product-track-stock" style="width:auto;">
           <label for="edit-product-track-stock" data-i18n="track_inventory">Track Stock</label>
-        </div>
-        <div class="form-group" style="grid-column: span 1; display:flex; align-items:center; gap:8px;">
-          <input type="checkbox" id="edit-product-online-active" style="width:auto;">
-          <label for="edit-product-online-active">Online Sync</label>
         </div>
         <div class="form-group" style="grid-column: span 2; text-align: right; border-top: 1px solid #eee; padding-top: 15px;">
           <button type="submit" class="btn btn-primary" data-i18n="save">Save Changes</button>

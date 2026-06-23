@@ -24,32 +24,36 @@
 }
 
 .category-btn:hover {
-  border-color: #2563eb;
-  background: #eff6ff;
-  color: #1d4ed8;
+  border-color: var(--blue);
+  background: var(--blue-50);
+  color: var(--blue);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(37,99,235,0.1);
+  box-shadow: 0 4px 8px rgba(10, 25, 47, 0.04);
 }
 
 .category-btn.active {
-  background: #eff6ff;
-  border-color: #3b82f6;
-  color: #1d4ed8;
+  background: var(--blue-50) !important;
+  border-color: var(--blue) !important;
+  color: var(--blue) !important;
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(37,99,235,0.15);
+  box-shadow: 0 2px 8px rgba(10, 25, 47, 0.08) !important;
 }
 
 /* ── POS Product Cards ──────────────────────────────────── */
 #productGrid .bg-white {
   border-radius: 14px !important;
-  border: 1.5px solid #e5e7eb !important;
+  border: 1.5px solid var(--border) !important;
   transition: all 0.2s cubic-bezier(0.4,0,0.2,1) !important;
+  background: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
   overflow: hidden;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.8), 0 4px 12px rgba(10, 25, 47, 0.02) !important;
 }
 
 #productGrid .bg-white:hover {
-  border-color: #2563eb !important;
-  box-shadow: 0 6px 14px rgba(37,99,235,0.1) !important;
+  border-color: var(--blue) !important;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.8), 0 10px 25px rgba(10, 25, 47, 0.08) !important;
   transform: translateY(-2px) !important;
 }
 
@@ -60,13 +64,13 @@
   font-size: 0.75rem !important;
   font-weight: 600 !important;
   padding: 7px 12px !important;
-  background: #2563eb !important;
+  background: var(--blue) !important;
   color: #fff !important;
   border: none !important;
   transition: all 0.2s !important;
 }
 #productGrid button[onclick*="addToCart"]:hover {
-  background: #1d4ed8 !important;
+  background: var(--blue-light) !important;
   transform: translateY(-1px) !important;
 }
 
@@ -74,8 +78,11 @@
 .cart.w-\[360px\],
 div.cart {
   border-radius: 20px !important;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.06) !important;
-  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 8px 32px rgba(10, 25, 47, 0.04) !important;
+  border: 1px solid rgba(10, 25, 47, 0.08) !important;
+  background: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
 }
 
 /* Cart item image thumbnail */
@@ -95,14 +102,17 @@ button#mobileBtn {
   border-radius: 10px !important;
   font-weight: 700 !important;
   letter-spacing: 0.1px;
-  box-shadow: 0 3px 8px rgba(24,119,242,0.2) !important;
+  background: var(--blue) !important;
+  color: #fff !important;
+  box-shadow: 0 3px 8px rgba(10, 25, 47, 0.12) !important;
   transition: all 0.2s !important;
 }
 button#cashBtn:hover,
 button#cardBtn:hover,
 button#mobileBtn:hover {
+  background: var(--blue-light) !important;
   transform: translateY(-1px) !important;
-  box-shadow: 0 6px 14px rgba(24,119,242,0.3) !important;
+  box-shadow: 0 6px 14px rgba(10, 25, 47, 0.2) !important;
 }
 
 /* ── POS Metric Cards (top of POS page) ─────────────────── */
@@ -335,10 +345,35 @@ input[type="number"]:hover::-webkit-outer-spin-button {
 
 /* ── Premium Style Enhancements ── */
 body, input, button, select, textarea {
-  font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
 
-/* Sidebar navigation cleanup */
+/* Sidebar navigation cleanup - Luminous Light (Navy Edition) */
+aside,
+aside[class*="bg-gradient"],
+.sidebar {
+  background: #ffffff !important;
+  border-right: 1px solid rgba(10, 25, 47, 0.08) !important;
+  box-shadow: 2px 0 20px rgba(10, 25, 47, 0.015) !important;
+}
+
+.sidebar-header {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(10, 25, 47, 0.08) !important;
+}
+
+.sidebar-header h2,
+.sidebar-header #posSystemTitle {
+  color: var(--blue) !important;
+}
+
+.sidebar-header p,
+.sidebar-header #licensedVersion {
+  background: var(--blue-50) !important;
+  border: 1px solid var(--blue-100) !important;
+  color: var(--blue) !important;
+}
+
 aside nav a.nav-item,
 aside nav a {
   border-left: none !important;
@@ -346,23 +381,31 @@ aside nav a {
   margin: 4px 12px !important;
   border-radius: 10px !important;
   padding: 10px 16px !important;
-  font-weight: 500 !important;
-  color: #94a3b8 !important;
+  font-weight: 600 !important;
+  color: var(--text-2) !important;
   background: transparent !important;
   transition: all 0.2s ease !important;
 }
+
 aside nav a.nav-item:hover,
 aside nav a:hover {
-  background: rgba(255, 255, 255, 0.05) !important;
-  color: #ffffff !important;
+  background: var(--blue-50) !important;
+  color: var(--blue) !important;
   padding-left: 16px !important;
 }
+
 aside nav a.nav-item.active,
 aside nav a[class*="bg-white/10"],
 aside nav a.active {
-  background: rgba(255, 255, 255, 0.08) !important;
+  background: var(--blue) !important;
   color: #ffffff !important;
   font-weight: 700 !important;
+  box-shadow: 0 4px 12px rgba(10, 25, 47, 0.15) !important;
+}
+
+.sidebar-footer {
+  background: transparent !important;
+  border-top: 1px solid rgba(10, 25, 47, 0.08) !important;
 }
 
 /* Dashboard stat cards light pastel styles (Image 2) */
@@ -402,18 +445,21 @@ aside nav a.active {
 #productGrid .product-card {
   display: flex !important;
   flex-direction: column !important;
-  background: #ffffff !important;
-  border: 1.5px solid #e2e8f0 !important;
+  background: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
   border-radius: 16px !important;
   padding: 12px !important;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
   cursor: pointer !important;
   position: relative !important;
   min-height: 250px !important;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.8), 0 4px 12px rgba(10, 25, 47, 0.02) !important;
 }
 #productGrid .product-card:hover {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.1), 0 8px 10px -6px rgba(59, 130, 246, 0.05) !important;
+  border-color: var(--blue) !important;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.8), 0 10px 25px rgba(10, 25, 47, 0.08) !important;
   transform: translateY(-4px) !important;
 }
 #productGrid .product-card .image-wrapper {
@@ -466,7 +512,7 @@ aside nav a.active {
 #productGrid .product-card .price {
   font-size: 0.95rem !important;
   font-weight: 800 !important;
-  color: #2563eb !important;
+  color: var(--blue) !important;
   margin-top: auto !important;
   margin-bottom: 10px !important;
 }
@@ -478,8 +524,8 @@ aside nav a.active {
 #productGrid .product-card .add-btn {
   width: 100% !important;
   background: #ffffff !important;
-  border: 1.5px solid #e2e8f0 !important;
-  color: #475569 !important;
+  border: 1.5px solid var(--border) !important;
+  color: var(--text-2) !important;
   font-size: 0.75rem !important;
   font-weight: 600 !important;
   padding: 8px 12px !important;
@@ -488,8 +534,8 @@ aside nav a.active {
   text-align: center !important;
 }
 #productGrid .product-card:hover .add-btn {
-  background: #3b82f6 !important;
-  border-color: #3b82f6 !important;
+  background: var(--blue) !important;
+  border-color: var(--blue) !important;
   color: #ffffff !important;
 }
 

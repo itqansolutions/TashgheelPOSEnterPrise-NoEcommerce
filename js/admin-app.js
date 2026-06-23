@@ -24,7 +24,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadSettings();
     loadUsers();
     loadAuditLogs();
-    loadDashboardMetrics();
 
     // Setup Form Listeners
     setupShopForm();
@@ -39,47 +38,7 @@ function getToken() {
     return localStorage.getItem('token') || '';
 }
 
-// --- Fetch Dashboard Stats ---
-async function loadDashboardMetrics() {
-    const token = getToken();
-    const lang = localStorage.getItem('pos_language') || 'en';
 
-    try {
-        // 1. Today's Sales
-        const dailyRes = await fetch(`${API_BASE}/sales/daily`, {
-            headers: { 'x-auth-token': token }
-        });
-        if (dailyRes.ok) {
-            const data = await dailyRes.json();
-            const rev = data.totalSales || 0;
-            const inv = data.totalOrders || 0;
-            document.getElementById('stat-revenue').textContent = `${rev.toFixed(2)} EGP`;
-            document.getElementById('stat-invoices').textContent = inv;
-        }
-
-        // 2. Total Products
-        const prodRes = await fetch(`${API_BASE}/products`, {
-            headers: { 'x-auth-token': token }
-        });
-        if (prodRes.ok) {
-            const data = await prodRes.json();
-            const count = Array.isArray(data) ? data.length : 0;
-            document.getElementById('stat-products').textContent = count;
-        }
-
-        // 3. Total Customers
-        const custRes = await fetch(`${API_BASE}/customers`, {
-            headers: { 'x-auth-token': token }
-        });
-        if (custRes.ok) {
-            const data = await custRes.json();
-            const count = Array.isArray(data) ? data.length : 0;
-            document.getElementById('stat-customers').textContent = count;
-        }
-    } catch (err) {
-        console.error('Error fetching dashboard stats:', err);
-    }
-}
 
 // --- Shop Settings ---
 async function loadSettings() {

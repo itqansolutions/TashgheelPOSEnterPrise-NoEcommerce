@@ -181,21 +181,6 @@
 
       <section class="flex-1 min-h-0 px-8 pb-8 flex flex-col overflow-hidden">
         
-        <!-- Top Metrics (Image 1 Style) -->
-        <div class="grid grid-cols-3 gap-6 mb-8 shrink-0">
-          <div class="bg-[#3b82f6] text-white rounded-2xl p-6 shadow-[0_8px_20px_rgba(59,130,246,0.3)]">
-            <h3 class="text-white/80 font-medium mb-2">Total Sales</h3>
-            <p class="text-3xl font-bold" id="top-total-sales">$0.00</p>
-          </div>
-          <div class="bg-[#10b981] text-white rounded-2xl p-6 shadow-[0_8px_20px_rgba(16,185,129,0.3)]">
-            <h3 class="text-white/80 font-medium mb-2">Total Profit</h3>
-            <p class="text-3xl font-bold" id="top-total-profit">$0.00</p>
-          </div>
-          <div class="bg-[#8b5cf6] text-white rounded-2xl p-6 shadow-[0_8px_20px_rgba(139,92,246,0.3)]">
-            <h3 class="text-white/80 font-medium mb-2">E-Commerce Sync</h3>
-            <p class="text-3xl font-bold" id="top-ecommerce-sync">100% Synced</p>
-          </div>
-        </div>
 
         <!-- POS Layout: Categories | Products | Cart -->
         <div class="flex flex-1 min-h-0 w-full gap-8">
@@ -253,7 +238,6 @@
               <div class="grid grid-cols-2 gap-2 mb-2">
                 <select id="orderTypeSelect" class="text-xs bg-gray-50 border border-gray-100 rounded-lg p-2" onchange="updateCartSummary()">
                   <option value="instore">In-Store</option>
-                  <option value="online">Online</option>
                   <option value="delivery">Delivery</option>
                 </select>
                 <select id="customerSelect" class="text-xs bg-gray-50 border border-gray-100 rounded-lg p-2"><option value="">Customer...</option></select>

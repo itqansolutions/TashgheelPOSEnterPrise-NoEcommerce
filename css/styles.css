@@ -4,16 +4,16 @@
    ============================================================= */
 
 /* ── Google Fonts ─────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
 /* ── Design Tokens ────────────────────────────────────────────── */
 :root {
-  /* Brand colors */
-  --blue:        #2563eb;
-  --blue-light:  #3b82f6;
-  --blue-dark:   #1d4ed8;
-  --blue-50:     #eff6ff;
-  --blue-100:    #dbeafe;
+  /* Brand colors (Navy Edition) */
+  --blue:        #0A192F; /* Midnight Navy */
+  --blue-light:  #1B355A;
+  --blue-dark:   #020C1B;
+  --blue-50:     rgba(10, 25, 47, 0.04);
+  --blue-100:    rgba(10, 25, 47, 0.08);
 
   --green:       #10b981;
   --green-50:    #ecfdf5;
@@ -32,30 +32,30 @@
   --purple-100:  #ede9fe;
 
   /* Sidebar */
-  --sidebar-bg:  #1a2332;
-  --sidebar-bg2: #111827;
+  --sidebar-bg:  #ffffff;
+  --sidebar-bg2: #fdfbf7;
   --sidebar-w:   240px;
 
   /* Backgrounds */
-  --bg:          #f0f2f7;
-  --bg-white:    #ffffff;
+  --bg:          #fdfbf7; /* Ivory base */
+  --bg-white:    #ffffff; /* Pearl card/layers */
 
   /* Borders */
-  --border:      #e5e7eb;
-  --border-dark: #d1d5db;
+  --border:      rgba(10, 25, 47, 0.08);
+  --border-dark: rgba(10, 25, 47, 0.15);
 
   /* Text */
-  --text-1:      #111827;
-  --text-2:      #374151;
-  --text-3:      #6b7280;
-  --text-4:      #9ca3af;
+  --text-1:      #0a192f; /* Deep Navy */
+  --text-2:      #2c3e50; /* Slate Navy */
+  --text-3:      #566573;
+  --text-4:      #85929e;
 
-  /* Shadows */
-  --shadow-xs:   0 1px 2px rgba(0,0,0,0.05);
-  --shadow-sm:   0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md:   0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.04);
-  --shadow-lg:   0 10px 15px -3px rgba(0,0,0,0.07), 0 4px 6px -4px rgba(0,0,0,0.03);
-  --shadow-xl:   0 20px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.03);
+  /* Shadows (Soft Diffused Ambient Occlusion) */
+  --shadow-xs:   0 1px 2px rgba(10, 25, 47, 0.01);
+  --shadow-sm:   0 4px 12px rgba(10, 25, 47, 0.02);
+  --shadow-md:   0 8px 30px rgba(10, 25, 47, 0.04);
+  --shadow-lg:   0 16px 40px rgba(10, 25, 47, 0.06);
+  --shadow-xl:   0 24px 60px rgba(10, 25, 47, 0.08);
 
   /* Radius */
   --r-xs:  4px;
@@ -83,9 +83,9 @@ html, body {
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
   background: var(--bg);
-  color: var(--text-1);
+  color: var(--text-2);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-size: 14px;
@@ -117,10 +117,11 @@ aside[class*="bg-gradient"] {
   flex-direction: column !important;
   height: 100vh !important;
   min-height: 100vh !important;
-  position: relative;
+  position: sticky !important;
+  top: 0 !important;
   z-index: 20;
-  box-shadow: 2px 0 8px rgba(0,0,0,0.15) !important;
-  border-right: none !important;
+  box-shadow: 2px 0 8px rgba(10, 25, 47, 0.02) !important;
+  border-right: 1px solid var(--border) !important;
   overflow: hidden;
 }
 
