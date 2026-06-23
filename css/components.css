@@ -348,30 +348,30 @@ body, input, button, select, textarea {
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
 
-/* Sidebar navigation cleanup - Luminous Light (Navy Edition) */
+/* Sidebar navigation cleanup - Luminous Light (Navy Edition - Dark Sidebar Variant) */
 aside,
 aside[class*="bg-gradient"],
 .sidebar {
-  background: #ffffff !important;
-  border-right: 1px solid rgba(10, 25, 47, 0.08) !important;
-  box-shadow: 2px 0 20px rgba(10, 25, 47, 0.015) !important;
+  background: linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg2) 100%) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 2px 0 20px rgba(2, 12, 27, 0.15) !important;
 }
 
 .sidebar-header {
-  background: transparent !important;
-  border-bottom: 1px solid rgba(10, 25, 47, 0.08) !important;
+  background: rgba(0, 0, 0, 0.2) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
 
 .sidebar-header h2,
 .sidebar-header #posSystemTitle {
-  color: var(--blue) !important;
+  color: #ffffff !important;
 }
 
 .sidebar-header p,
 .sidebar-header #licensedVersion {
-  background: var(--blue-50) !important;
-  border: 1px solid var(--blue-100) !important;
-  color: var(--blue) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.8) !important;
 }
 
 aside nav a.nav-item,
@@ -379,33 +379,34 @@ aside nav a {
   border-left: none !important;
   border-left-width: 0 !important;
   margin: 4px 12px !important;
-  border-radius: 10px !important;
+  border-radius: 8px !important;
   padding: 10px 16px !important;
   font-weight: 600 !important;
-  color: var(--text-2) !important;
+  color: rgba(255, 255, 255, 0.65) !important;
   background: transparent !important;
   transition: all 0.2s ease !important;
 }
 
 aside nav a.nav-item:hover,
 aside nav a:hover {
-  background: var(--blue-50) !important;
-  color: var(--blue) !important;
-  padding-left: 16px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #ffffff !important;
+  padding-left: 20px !important;
 }
 
 aside nav a.nav-item.active,
 aside nav a[class*="bg-white/10"],
 aside nav a.active {
-  background: var(--blue) !important;
+  background: var(--blue-light) !important; /* Accent Navy */
   color: #ffffff !important;
   font-weight: 700 !important;
-  box-shadow: 0 4px 12px rgba(10, 25, 47, 0.15) !important;
+  box-shadow: 0 4px 12px rgba(2, 12, 27, 0.2) !important;
+  border-left: 3px solid #3b82f6 !important;
 }
 
 .sidebar-footer {
-  background: transparent !important;
-  border-top: 1px solid rgba(10, 25, 47, 0.08) !important;
+  background: rgba(0, 0, 0, 0.15) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
 
 /* Dashboard stat cards light pastel styles (Image 2) */

@@ -7,22 +7,22 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
       },
       colors: {
-        'brand-purple-light': '#818cf8', /* Indigo 400 */
-        'brand-purple':       '#6366f1', /* Indigo 500 */
-        'brand-purple-dark':  '#4f46e5', /* Indigo 600 */
-        'brand-blue':         '#3b82f6', /* Blue 500 */
-        'brand-blue-dark':    '#2563eb', /* Blue 600 */
-        'brand-green':        '#10b981', /* Emerald 500 */
-        'brand-green-dark':   '#059669', /* Emerald 600 */
-        'brand-red':          '#ef4444', /* Red 500 */
-        'brand-red-dark':     '#dc2626', /* Red 600 */
-        'brand-dark':         '#0f172a', /* Slate 900 */
-        'brand-dark-2':       '#1e293b', /* Slate 800 */
-        'brand-orange':       '#f59e0b', /* Amber 500 */
-        'brand-gray-light':   '#f8fafc', /* Slate 50 */
+        'brand-purple-light': '#1B355A',
+        'brand-purple':       '#0A192F',
+        'brand-purple-dark':  '#020C1B',
+        'brand-blue':         '#0A192F',
+        'brand-blue-dark':    '#1B355A',
+        'brand-green':        '#10b981',
+        'brand-green-dark':   '#059669',
+        'brand-red':          '#ef4444',
+        'brand-red-dark':     '#dc2626',
+        'brand-dark':         '#0A192F',
+        'brand-dark-2':       '#020C1B',
+        'brand-orange':       '#f59e0b',
+        'brand-gray-light':   '#fdfbf7',
       },
       boxShadow: {
         'premium': '0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 0 3px rgba(0,0,0,0.02)',
