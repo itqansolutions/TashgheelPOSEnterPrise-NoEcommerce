@@ -2037,28 +2037,7 @@ async function confirmSplitPayment() {
   }
 }
 
-    confirmBtn.disabled = false;
-    remainingEl.textContent = "0.00 (Ready)";
-  } else {
-    remainingEl.style.color = 'red';
-    confirmBtn.disabled = true;
-  }
-}
 
-function confirmSplitPayment() {
-  const cash = parseFloat(document.getElementById('splitCash').value) || 0;
-  const card = parseFloat(document.getElementById('splitCard').value) || 0;
-  const mobile = parseFloat(document.getElementById('splitMobile').value) || 0;
-
-  const splits = [];
-  if (cash > 0) splits.push({ method: 'cash', amount: cash });
-  if (card > 0) splits.push({ method: 'card', amount: card });
-  if (mobile > 0) splits.push({ method: 'mobile', amount: mobile });
-
-  window.currentSplitPayments = splits;
-  processSale('split');
-  document.getElementById('splitPaymentModal').style.display = 'none';
-}
 
 
 // ===================== TIMER LOGIC =====================

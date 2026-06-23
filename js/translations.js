@@ -19,6 +19,12 @@ const translations = {
         confirm: "Confirm",
         cancel: "Cancel",
         processing: "Processing...",
+        
+        // POS specific missing keys
+        pos_products_tab: "Products",
+        pos_held_tab: "Held Orders",
+        pos_layaway_btn: "Layaway",
+        manager_password_required: "Manager Password Required",
 
         // Navigation
         nav_pos: "🛒 Point of Sale",
@@ -386,6 +392,12 @@ const translations = {
         item: "الصنف",
         qty_sold: "الكمية المباعة",
         qty_return: "الكمية المرتجعة",
+        
+        // POS specific missing keys
+        pos_products_tab: "المنتجات",
+        pos_held_tab: "الطلبات المعلقة",
+        pos_layaway_btn: "تقسيط/حجز",
+        manager_password_required: "مطلوب كلمة مرور المدير",
         
         // Navigation
         nav_pos: "🛒 نقطة البيع",
