@@ -371,6 +371,22 @@ const translations = {
         report_purchases: "Purchases Report"
     },
     ar: {
+        // Missing keys
+        finished: "مكتمل",
+        partial_return: "إرجاع جزئي",
+        full_return: "إرجاع كلي",
+        cancelled: "ملغي",
+        id: "رقم",
+        payment: "طريقة الدفع",
+        total_after_discount: "الإجمالي بعد الخصم",
+        status: "الحالة",
+        return_reason: "سبب الإرجاع",
+        partial_return_modal: "إرجاع جزئي",
+        select: "تحديد",
+        item: "الصنف",
+        qty_sold: "الكمية المباعة",
+        qty_return: "الكمية المرتجعة",
+        
         // Navigation
         nav_pos: "🛒 نقطة البيع",
         nav_products: "📦 المنتجات",

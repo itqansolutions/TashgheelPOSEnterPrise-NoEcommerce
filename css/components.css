@@ -370,11 +370,43 @@ button:focus-visible { outline: 2px solid #2563EB; outline-offset: 2px; }
 button:focus:not(:focus-visible) { outline: none; }
 
 /* ── RTL-specific adjustments ───────────────────────────── */
+body.rtl { direction: rtl; }
 body.rtl .sidebar-footer,
 body.rtl .sidebar-header { text-align: right; }
 body.rtl #cartItems { direction: rtl; }
 body.rtl .payment-methods { direction: rtl; }
 body.rtl .form-grid { direction: rtl; }
+
+/* Nav Links RTL */
+body.rtl aside nav a,
+body.rtl aside#appSidebar nav a { 
+  text-align: right !important; 
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+}
+body.rtl aside nav a:hover,
+body.rtl aside#appSidebar nav a:hover {
+  padding-left: 16px !important;
+  padding-right: 20px !important;
+}
+
+/* Search bar icon positioning */
+body.rtl header input#productSearch {
+  padding: 10px 42px 10px 16px !important;
+}
+
+/* Modals */
+body.rtl .modal-content { direction: rtl; text-align: right; }
+body.rtl .modal-header { flex-direction: row-reverse; }
+
+/* Tables */
+body.rtl th, body.rtl td { text-align: right; }
+
+/* Product Info */
+body.rtl #productGrid .product-card .info { text-align: right !important; }
+body.rtl #productGrid .product-card .price { margin-right: auto; margin-left: 0; }
+
 
 /* ── Collapse transition for panels ────────────────────── */
 .panel-collapse { max-height: 0; overflow: hidden; transition: max-height 0.3s cubic-bezier(0.4,0,0.2,1); }
