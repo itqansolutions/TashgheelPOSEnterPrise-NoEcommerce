@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8">
@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="css/tailwind.css">
   <link rel="stylesheet" href="css/components.css">
 </head>
-<body class="bg-brand-gray-light font-sans text-brand-dark overflow-y-auto antialiased" style="margin: 0; padding: 0; background-color: #f8fafc; min-height: 100vh;">
+<body class="bg-brand-gray-light font-sans text-brand-dark overflow-y-auto antialiased" style="margin: 0; padding: 0; background-color: transparent; min-height: 100vh;">
   <div class="language-switcher">
     <button class="lang-btn" onclick="setLanguage('en')" id="langEn">English</button>
     <button class="lang-btn" onclick="setLanguage('ar')" id="langAr">العربية</button>
@@ -38,12 +38,12 @@
       </nav>
       <div class="sidebar-footer"><button class="btn btn-danger" onclick="confirmLogout()" data-i18n="logout">Logout</button></div>
     </aside>
-    <main style="flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 100vh; background-color: #f8fafc; position: relative;">
+    <main style="flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 100vh; background-color: transparent; position: relative;">
       <header class="bg-white/80 backdrop-blur-md px-8 py-4 shadow-sm border-b border-gray-200 flex justify-between items-center z-10 sticky top-0">
         <h1 class="text-xl font-bold text-brand-dark" data-i18n="nav_inventory">📊 Inventory Management</h1>
         <div style="display:flex;align-items:center;gap:10px;"><span id="welcomeText" data-i18n="welcome">Welcome,</span><span id="currentUserName" class="font-semibold">User</span><span id="userRole" class="user-role">cashier</span></div>
       </header>
-      <section style="flex: 1; padding: 2rem; display: flex; flex-direction: column; gap: 2rem; background-color: #f8fafc;">
+      <section style="flex: 1; padding: 2rem; display: flex; flex-direction: column; gap: 2rem; background-color: transparent;">
         <div class="bg-white rounded-2xl shadow-premium border border-gray-100 overflow-hidden">
           <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center flex-wrap gap-3">
             <div class="flex items-center gap-3">

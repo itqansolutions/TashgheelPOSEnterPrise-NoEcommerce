@@ -13,7 +13,7 @@ module.exports = {
         'brand-purple-light': '#1B355A',
         'brand-purple':       '#0A192F',
         'brand-purple-dark':  '#020C1B',
-        'brand-blue':         '#0A192F',
+        'brand-blue':         '#2563EB',
         'brand-blue-dark':    '#1B355A',
         'brand-green':        '#10b981',
         'brand-green-dark':   '#059669',
@@ -22,7 +22,8 @@ module.exports = {
         'brand-dark':         '#0A192F',
         'brand-dark-2':       '#020C1B',
         'brand-orange':       '#f59e0b',
-        'brand-gray-light':   '#fdfbf7',
+        'brand-gray-light':   '#F0F4FF',  /* Updated to match glass theme */
+        'brand-purple-mid':   '#112240',
       },
       boxShadow: {
         'premium': '0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 0 3px rgba(0,0,0,0.02)',
