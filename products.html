@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8" />
@@ -84,16 +84,16 @@
                 </div>
               </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 col-span-2">
+              <div class="grid grid-cols-1 md:grid-cols-1 gap-6 mb-8 col-span-2">
                 <div class="form-group">
                   <label class="text-xs font-bold text-gray-500 uppercase mb-2 block" data-i18n="price">In-Store Price</label>
                   <input type="number" step="0.01" id="product-price" class="premium-input" placeholder="0.00">
                 </div>
-                <div class="form-group">
+                <div class="form-group hidden">
                   <label class="text-xs font-bold text-gray-500 uppercase mb-2 block" data-i18n="cost">Cost Price</label>
                   <input type="number" step="0.01" id="product-cost" class="premium-input" placeholder="0.00">
                 </div>
-                <div class="form-group">
+                <div class="form-group hidden">
                   <label class="text-xs font-bold text-gray-500 uppercase mb-2 block" data-i18n="stock">Initial Stock</label>
                   <input type="number" id="product-stock" class="premium-input" placeholder="0">
                 </div>
@@ -141,8 +141,8 @@
                         <tr>
                            <th class="px-4 py-2">Variant</th>
                            <th class="px-4 py-2">Barcode</th>
-                           <th class="px-4 py-2">Cost</th>
-                           <th class="px-4 py-2">Stock</th>
+                           <th class="px-4 py-2 hidden">Cost</th>
+                           <th class="px-4 py-2 hidden">Stock</th>
                            <th class="px-4 py-2 text-brand-green">Local Price</th>
                            <th class="px-4 py-2">Image URL</th>
                            <th class="px-4 py-2"></th>

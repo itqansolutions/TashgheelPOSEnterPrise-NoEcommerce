@@ -65,8 +65,8 @@ function generateVariants() {
                ${val}
             </td>
             <td class="px-4 py-2"><input type="text" class="v-sku premium-input !py-1 !text-xs" placeholder="SKU/Barcode"></td>
-            <td class="px-4 py-2"><input type="number" step="0.01" class="v-price premium-input !py-1 !text-xs" value="${basePrice}"></td>
-            <td class="px-4 py-2"><input type="number" class="v-stock premium-input !py-1 !text-xs" value="0" style="width:60px"></td>
+            <td class="px-4 py-2 hidden"><input type="number" step="0.01" class="v-cost premium-input !py-1 !text-xs" value="${baseCost}"></td>
+            <td class="px-4 py-2 hidden"><input type="number" class="v-stock premium-input !py-1 !text-xs" value="0" style="width:60px"></td>
             <td class="px-4 py-2"><input type="number" step="0.01" class="v-price premium-input !py-1 !text-xs text-brand-green" value="${basePrice}" style="width:80px"></td>
             <td class="px-4 py-2"><input type="text" class="v-image premium-input !py-1 !text-xs" placeholder="Image URL"></td>
             <td class="px-4 py-2"><button type="button" onclick="this.closest('tr').remove()" class="text-red-500 hover:text-red-700 font-bold">X</button></td>
