@@ -472,19 +472,33 @@ async function checkTrialStatus() {
     if (response.ok) {
       const data = await response.json();
       if (data.isExpired) {
+        const lang = localStorage.getItem('pos_language') || 'en';
+        const t = (en, ar) => (lang === 'ar' ? ar : en);
+        
         document.body.innerHTML = `
-  < div style = "display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#f8f9fa;text-align:center;" >
-    <div style="background:white;padding:40px;border-radius:10px;box-shadow:0 0 20px rgba(0,0,0,0.1);max-width:500px;">
-      <h1 style="color:#e74c3c;margin-bottom:20px;">Trial Expired</h1>
-      <p style="font-size:18px;margin-bottom:30px;">Your trial period has ended. Please contact support to activate the full version.</p>
-      <div style="font-weight:bold;color:#2c3e50;margin-bottom:20px;">
-        <p>📞 +201126522373</p>
-        <p>📧 info@itqansolutions.org</p>
-      </div>
-      <button onclick="window.location.href='index.html'" class="btn btn-primary" style="margin-top:20px;">Back to Login</button>
-    </div>
-          </div >
-  `;
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background: linear-gradient(135deg, #f0f4f8, #d9e2ec); font-family: 'Inter', sans-serif;">
+            <div style="background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.5); padding: 50px; border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.08); max-width: 500px; text-align: center;">
+              <div style="width: 80px; height: 80px; background: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 32px; color: #ef4444;"></i>
+              </div>
+              <h1 style="color: #1e3a8a; font-size: 28px; font-weight: 800; margin-bottom: 16px;">${t("Trial Expired", "انتهت الفترة التجريبية")}</h1>
+              <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin-bottom: 32px;">${t("Your trial period has ended. Please contact support to activate the full version.", "لقد انتهت الفترة التجريبية الخاصة بك. يرجى التواصل مع الدعم الفني لتفعيل النسخة الكاملة.")}</p>
+              
+              <div style="background: rgba(30, 58, 138, 0.03); border-radius: 16px; padding: 20px; margin-bottom: 32px; border: 1px solid rgba(30, 58, 138, 0.1);">
+                <p style="color: #1e3a8a; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                  <i class="fas fa-phone-alt"></i> +201126522373
+                </p>
+                <p style="color: #1e3a8a; font-weight: 600; margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                  <i class="fas fa-envelope"></i> info@itqansolutions.org
+                </p>
+              </div>
+
+              <button onclick="window.location.href='index.html'" style="background: linear-gradient(135deg, #1e3a8a, #2563eb); color: white; border: none; padding: 16px 32px; border-radius: 12px; font-weight: 700; font-size: 16px; cursor: pointer; transition: all 0.3s ease; width: 100%; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">
+                ${t("Back to Login", "العودة لتسجيل الدخول")}
+              </button>
+            </div>
+          </div>
+        `;
       } else if (data.daysRemaining <= 3) {
         // Show warning banner
         const banner = document.createElement('div');
