@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8">
@@ -72,6 +72,45 @@
       </section>
     </main>
   </div>
+
+  <!-- Modals (Payment/Statement) -->
+  <div id="paymentModal" class="modal" style="display:none;">
+    <div class="modal-content !max-w-md">
+      <h3 class="text-lg font-bold mb-4" data-i18n="make_payment">Make Payment</h3>
+      <div class="bg-gray-50 p-4 rounded-xl mb-4">
+        <p class="text-sm"><span data-i18n="supplier">Supplier</span>: <strong id="paymentSupplierName"></strong></p>
+        <p class="text-sm"><span data-i18n="current_balance">Current Balance</span>: <strong id="paymentSupplierBalance"></strong></p>
+      </div>
+      <div class="form-group mb-4"><label data-i18n="amount">Amount</label><input type="number" id="paymentAmount" min="0" required></div>
+      <div class="form-group mb-6"><label data-i18n="notes">Notes</label><input type="text" id="paymentNotes"></div>
+      <div class="flex gap-3">
+        <button onclick="closeModal('paymentModal')" class="btn btn-secondary flex-1" data-i18n="cancel">Cancel</button>
+        <button onclick="submitPayment()" class="btn btn-success flex-1" data-i18n="pay">Pay</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="statementModal" class="modal" style="display:none;">
+    <div class="modal-content !w-[90%] !max-w-4xl !h-[80vh] flex flex-col p-0">
+      <div class="p-6 border-b flex justify-between items-center bg-gray-50">
+        <h3 class="text-lg font-bold" data-i18n="account_statement">Account Statement</h3>
+        <span class="text-brand-dark font-bold" id="statementSupplierName"></span>
+      </div>
+      <div class="flex-1 overflow-y-auto p-6">
+        <table class="data-table w-full" id="statementTable">
+          <thead class="sticky top-0 bg-white">
+            <tr><th data-i18n="date">Date</th><th data-i18n="type">Type</th><th data-i18n="notes">Notes</th><th data-i18n="debit">Debit (+ Debt)</th><th data-i18n="credit">Credit (- Payment)</th></tr>
+          </thead>
+          <tbody id="statement-body"></tbody>
+        </table>
+      </div>
+      <div class="p-6 border-t flex justify-end gap-3">
+        <button onclick="closeModal('statementModal')" class="btn btn-secondary" data-i18n="close">Close</button>
+        <button onclick="printStatement()" class="btn btn-primary px-8" data-i18n="print">Print</button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/auth.js"></script>
   <script src="js/translations.js"></script>
   <script src="js/suppliers-app.js"></script>

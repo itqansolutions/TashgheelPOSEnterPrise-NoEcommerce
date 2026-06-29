@@ -58,6 +58,7 @@ const translations = {
         target_value: "Target Value",
         progress: "Progress",
         add_warehouse: "Add Warehouse",
+        address: "Address",
 
         // Navigation
         nav_pos: "🛒 Point of Sale",
@@ -464,6 +465,7 @@ const translations = {
         target_value: "الهدف",
         progress: "التقدم",
         add_warehouse: "إضافة مخزن",
+        address: "العنوان",
         
         // Navigation
         nav_pos: "🛒 نقطة البيع",
