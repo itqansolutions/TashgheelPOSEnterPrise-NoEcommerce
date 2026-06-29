@@ -848,9 +848,9 @@ function updateCartSummary() {
   const orderType = document.getElementById('orderTypeSelect')?.value || 'instore';
 
   cart.forEach((item, index) => {
-    let activePrice = item.basePrice || item.price;
-    if (orderType === 'online' && item.priceOnline > 0) activePrice = item.priceOnline;
-    if (orderType === 'delivery' && item.priceDelivery > 0) activePrice = item.priceDelivery;
+    let activePrice = parseFloat(item.basePrice) || parseFloat(item.price) || 0;
+    if (orderType === 'online' && parseFloat(item.priceOnline) > 0) activePrice = parseFloat(item.priceOnline);
+    if (orderType === 'delivery' && parseFloat(item.priceDelivery) > 0) activePrice = parseFloat(item.priceDelivery);
     item.price = activePrice;
 
     subtotal += item.price * item.qty;
