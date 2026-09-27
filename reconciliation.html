@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <title>Opening Reconciliation - Tashgheel POS</title>
+  <link rel="stylesheet" href="css/styles.css?v=8.0">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="css/tailwind.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body class="bg-brand-gray-light font-sans text-brand-dark overflow-y-auto antialiased" style="margin: 0; padding: 0; min-height: 100vh;">
+  <div class="language-switcher">
+    <button class="lang-btn" onclick="setLanguage('en')" id="langEn">English</button>
+    <button class="lang-btn" onclick="setLanguage('ar')" id="langAr">العربية</button>
+  </div>
+  <div style="display: flex; flex-direction: row; min-height: 100vh; width: 100vw; margin: 0; padding: 0;">
+    <aside class="bg-gradient-to-b from-brand-dark-2 to-brand-dark text-white flex flex-col shadow-2xl z-20 shrink-0" style="width: 260px; min-width: 260px; min-height: 100vh;">
+      <div class="sidebar-header"><h2 data-i18n="app_title">🏪 Tashgheel POS</h2><p data-i18n="enhanced_edition">Enterprise Edition</p></div>
+            <nav class="flex-1 overflow-y-auto py-4">
+        <a href="pos.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_pos">🛒 Point of Sale</a>
+        <a href="products.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_products">📦 Products</a>
+        <a href="inventory.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_inventory">📊 Inventory</a>
+        <a href="reconciliation.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-brand-blue bg-white/10 text-white" data-i18n="nav_reconciliation">📋 Opening Reconciliation</a>
+        <a href="stock-transfer.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stock_transfer">🔄 Stock Transfer</a>
+        <a href="price-list.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_price_list">💰 Price List</a>
+        <a href="purchases.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_purchases">📥 Purchases</a>
+        <a href="receipts.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_receipts">🧾 Receipts</a>
+        <a href="reports.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_reports">📈 Reports</a>
+        <a href="suppliers.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_suppliers">🏢 Suppliers</a>
+        <a href="customers.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_customers">👥 Customers</a>
+        <a href="open-orders.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_open_orders">📝 Open Orders</a>
+        <a href="salesmen.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_salesmen">🧑‍💼 Salesmen</a>
+        <a href="expenses.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_expenses">📋 Expenses</a>
+        <a href="stores.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stores">🏢 Warehouses</a>
+        <a href="admin.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_admin">⚙️ Admin Panel</a>
+        <a href="backup.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_backup">💾 Backup</a>
+      </nav>
+      <div class="sidebar-footer"><button class="btn btn-danger" onclick="confirmLogout()" data-i18n="logout">Logout</button></div>
+    </aside>
+
+    <main style="flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 100vh; position: relative;">
+      <header class="bg-white/80 backdrop-blur-md px-8 py-4 shadow-sm border-b border-gray-200 flex justify-between items-center z-10 sticky top-0">
+        <div class="flex items-center gap-3">
+          <h1 class="text-xl font-bold text-brand-dark" data-i18n="nav_reconciliation">📋 Opening Reconciliation</h1>
+          <span id="storeLockBadge" class="hidden px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+            🔒 الفرع قيد الجرد (Store Locked)
+          </span>
+        </div>
+        <div class="flex items-center gap-3 bg-brand-purple/5 px-4 py-2 rounded-full border border-brand-purple/20">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-r from-brand-purple to-purple-400 flex items-center justify-center text-white font-bold shadow-md">
+            <i class="fas fa-user text-sm"></i>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-xs text-gray-500 leading-tight" id="welcomeText" data-i18n="welcome">Welcome,</span>
+            <div class="flex items-center gap-2">
+              <span id="currentUserName" class="text-sm font-bold text-brand-dark leading-tight">User</span>
+              <span id="userRole" class="text-[10px] bg-brand-blue text-white px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">cashier</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="p-6 lg:p-8 flex flex-col gap-6">
+        <!-- Store Selection & Session Controls -->
+        <div class="bg-white rounded-2xl shadow-premium border border-gray-100 p-6">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-4 flex-wrap">
+              <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1" data-i18n="warehouse">المخزن / Warehouse:</label>
+                <select id="reconciliationStoreFilter" class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-brand-blue min-w-[220px]"></select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1">حالة الجلسة / Status:</label>
+                <span id="sessionStatusBadge" class="inline-block px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-700">لا توجد جلسة نشطة</span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 flex-wrap">
+              <button id="startSessionBtn" onclick="openStartSessionModal()" class="btn btn-primary text-sm flex items-center gap-2 shadow-sm">
+                <i class="fas fa-play"></i> <span>بدء جلسة جرد جديدة</span>
+              </button>
+              <button id="saveDraftBtn" onclick="saveDraftItems()" class="btn btn-secondary text-sm flex items-center gap-1.5 hidden">
+                <i class="fas fa-save"></i> <span>حفظ المسودة</span>
+              </button>
+              <button id="submitReviewBtn" onclick="submitSession()" class="btn btn-warning text-sm flex items-center gap-1.5 hidden font-bold">
+                <i class="fas fa-paper-plane"></i> <span>تقديم للاعتماد</span>
+              </button>
+              <button id="approveBtn" onclick="approveSession()" class="btn btn-success text-sm flex items-center gap-1.5 hidden font-bold">
+                <i class="fas fa-check-circle"></i> <span>اعتماد وتطبيق القيود</span>
+              </button>
+              <button id="cancelSessionBtn" onclick="cancelSession()" class="btn btn-danger text-sm flex items-center gap-1.5 hidden">
+                <i class="fas fa-times-circle"></i> <span>إلغاء الجلسة</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Session Summary Cards (Shown when active session) -->
+        <div id="sessionStatsCard" class="grid grid-cols-2 md:grid-cols-5 gap-4 hidden">
+          <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
+            <div class="text-xs text-gray-500 font-bold mb-1">إجمالي الأصناف</div>
+            <div id="statTotalItems" class="text-xl font-extrabold text-brand-dark">0</div>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
+            <div class="text-xs text-emerald-600 font-bold mb-1">متطابق (مطابقة)</div>
+            <div id="statMatched" class="text-xl font-extrabold text-emerald-600">0</div>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
+            <div class="text-xs text-blue-600 font-bold mb-1">زيادة (Surplus)</div>
+            <div id="statSurplus" class="text-xl font-extrabold text-blue-600">0</div>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
+            <div class="text-xs text-rose-600 font-bold mb-1">عجز (Deficit)</div>
+            <div id="statDeficit" class="text-xl font-extrabold text-rose-600">0</div>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center col-span-2 md:col-span-1">
+            <div class="text-xs text-purple-600 font-bold mb-1">فارق القيمة الصافي</div>
+            <div id="statVarianceVal" class="text-xl font-extrabold text-purple-700">$0.00</div>
+          </div>
+        </div>
+
+        <!-- Items Table Container -->
+        <div class="bg-white rounded-2xl shadow-premium border border-gray-100 overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center flex-wrap gap-3">
+            <div class="flex items-center gap-3">
+              <input type="text" id="reconciliationSearch" placeholder="بحث باسم الصنف أو الباركود..." class="search-box" style="width:280px;">
+              <select id="varianceFilter" class="rounded-lg border border-gray-300 px-3 py-2 text-xs font-semibold">
+                <option value="all">كل الأصناف / All Items</option>
+                <option value="variance_only">فقط الأصناف التي بها فارق / Discrepancies</option>
+                <option value="matched">المتطابقة / Matched</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="sessionRefText" class="text-xs text-gray-500 font-semibold"></span>
+              <button onclick="refreshCurrentSession()" class="btn btn-secondary text-sm">🔄 تحديث</button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="data-table w-full">
+              <thead>
+                <tr>
+                  <th>الصنف / الخيار (Product / Variant)</th>
+                  <th>الباركود / SKU</th>
+                  <th>التكلفة (Unit Cost)</th>
+                  <th>رصيد النظام (System Count)</th>
+                  <th style="width: 150px;">العد الفعلي (Physical Count)</th>
+                  <th>الفارق (Variance)</th>
+                  <th>قيمة الفارق (Variance Value)</th>
+                  <th>ملاحظات السطر</th>
+                </tr>
+              </thead>
+              <tbody id="reconciliationTableBody">
+                <tr>
+                  <td colspan="8" class="text-center py-12 text-gray-400">
+                    <i class="fas fa-clipboard-list text-3xl mb-2 block"></i>
+                    اختر مخزناً واضغط على "بدء جلسة جرد جديدة" لتحميل أرصدة النظام وبدء العد الفعلي.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Start Session Modal -->
+  <div id="startSessionModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 440px;">
+      <h3 class="text-lg font-bold mb-3">📋 بدء جلسة جرد افتتاحي</h3>
+      <p class="text-xs text-amber-800 bg-amber-50 p-3 rounded-lg border border-amber-200 mb-4">
+        ⚠️ <strong>تنبيه هام:</strong> بدء جلسة الجرد سيقوم بإنشاء لقطة لجميع أرصدة المخزن الحالية وقفل المخزن تلقائياً لمنع أي حركات مبيعات أو تحويلات لحين اعتماد الجرد.
+      </p>
+      <form id="startSessionForm" onsubmit="handleStartSession(event)">
+        <div class="form-group">
+          <label>المخزن المستهدف:</label>
+          <input type="text" id="modalStoreName" readonly class="bg-gray-100 font-bold">
+        </div>
+        <div class="form-group">
+          <label>ملاحظات الجلسة (اختياري):</label>
+          <textarea id="modalSessionNotes" class="search-box" rows="3" placeholder="مثال: جرد بداية العام / جرد تأسيسي"></textarea>
+        </div>
+        <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+          <button type="button" onclick="closeStartSessionModal()" class="btn btn-secondary">إلغاء</button>
+          <button type="submit" class="btn btn-primary font-bold">تأكيد وبدء الجرد والقفل</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/translations.js"></script>
+  <script src="js/reconciliation-app.js"></script>
+</body>
+</html>

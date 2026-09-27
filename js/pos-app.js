@@ -74,6 +74,8 @@ async function checkOpenShift() {
         }
     }
 
+    window.posAllowedStores = allowedStores;
+
     const storeSelect = document.getElementById('storeSelect');
     const posWarehouseSelector = document.getElementById('pos-warehouse-selector');
     
@@ -82,7 +84,7 @@ async function checkOpenShift() {
         allowedStores.forEach(s => {
             const opt = document.createElement('option');
             opt.value = s.id;
-            opt.textContent = s.name;
+            opt.textContent = s.isReconciling ? `🔒 ${s.name} (قيد الجرد)` : s.name;
             storeSelect.appendChild(opt);
         });
     }
@@ -92,12 +94,14 @@ async function checkOpenShift() {
         allowedStores.forEach(s => {
             const opt = document.createElement('option');
             opt.value = s.id;
-            opt.textContent = s.name;
+            opt.textContent = s.isReconciling ? `🔒 ${s.name} (قيد الجرد)` : s.name;
             posWarehouseSelector.appendChild(opt);
         });
         posWarehouseSelector.addEventListener('change', () => {
-            renderProducts();
-            localStorage.setItem('pos_selected_store', posWarehouseSelector.value);
+            const selectedVal = posWarehouseSelector.value;
+            localStorage.setItem('pos_selected_store', selectedVal);
+            checkReconciliationLock(selectedVal);
+            loadProducts();
         });
         
         // Restore last selected store if available
@@ -105,6 +109,8 @@ async function checkOpenShift() {
         if (savedStore && allowedStores.find(s => s.id === savedStore)) {
             posWarehouseSelector.value = savedStore;
         }
+
+        checkReconciliationLock(posWarehouseSelector.value);
     }
 
     // Get current user safely from storage, fallback to DOM if needed, but storage is source of truth
@@ -188,6 +194,42 @@ function enableReadOnlyMode(ownerName) {
   // The requirement says "deny making any transaction". 
   // I will allow adding to cart to calculator totals, but checkout is blocked by disabled buttons + check in processSale.
 }
+
+function checkReconciliationLock(storeId) {
+  const targetStoreId = storeId || document.getElementById('pos-warehouse-selector')?.value || localStorage.getItem('pos_selected_store');
+  const store = (window.posAllowedStores || []).find(s => String(s.id) === String(targetStoreId));
+  const banner = document.getElementById('posReconciliationBanner');
+  const isLocked = Boolean(store && store.isReconciling === true);
+
+  if (banner) {
+    banner.style.display = isLocked ? 'flex' : 'none';
+    const bannerText = document.getElementById('posReconciliationBannerText');
+    if (bannerText && store) {
+      const lang = localStorage.getItem('pos_language') || 'en';
+      bannerText.textContent = lang === 'ar'
+        ? `🔒 هذا الفرع (${store.name}) مغلق حالياً لإجراء الجرد الافتتاحي. تم إيقاف المبيعات لحين اعتماد الجرد.`
+        : `🔒 This branch (${store.name}) is locked for Opening Reconciliation. Transactions are paused until approved.`;
+    }
+  }
+
+  // Disable / Enable checkout buttons
+  const buttonsToDisable = ['cashBtn', 'cardBtn', 'mobileBtn', 'creditBtn', 'holdBtn'];
+  buttonsToDisable.forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) {
+      if (isLocked) {
+        btn.disabled = true;
+        btn.title = "الفرع مغلق حالياً لإجراء الجرد الافتتاحي";
+      } else if (!isReadOnly) {
+        btn.disabled = false;
+        btn.title = "";
+      }
+    }
+  });
+
+  return isLocked;
+}
+window.checkReconciliationLock = checkReconciliationLock;
 
 function resumeShift() {
   document.getElementById('resumeShiftModal').style.display = 'none';
@@ -579,7 +621,9 @@ function ensureSearchClickable() {
 async function loadProducts() {
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/products`, {
+    const selectedStoreId = document.getElementById('pos-warehouse-selector')?.value || localStorage.getItem('pos_selected_store');
+    const storeParam = selectedStoreId ? `?storeId=${encodeURIComponent(selectedStoreId)}` : '';
+    const response = await fetch(`${API_URL}/products${storeParam}`, {
       headers: { 'x-auth-token': token }
     });
     if (!response.ok) throw new Error('Failed to fetch products');
@@ -620,13 +664,23 @@ function renderProducts() {
   const selectedStoreId = document.getElementById('pos-warehouse-selector')?.value || localStorage.getItem('pos_selected_store');
 
   filteredProducts.forEach((product) => {
-    let currentStock = product.stock || 0;
-    if (product.stores && selectedStoreId) {
+    const hasVariants = product.hasVariants && Array.isArray(product.variants) && product.variants.length > 0;
+    const variantStocksList = Array.isArray(product.variantStocks) ? product.variantStocks : [];
+
+    let currentStock = 0;
+    if (hasVariants) {
+      currentStock = variantStocksList.reduce((sum, vs) => sum + (vs.quantity || 0), 0);
+    } else {
+      const vs = variantStocksList.find(s => !s.variantId);
+      if (vs) {
+        currentStock = vs.quantity;
+      } else if (product.stores && selectedStoreId) {
         const storeStock = product.stores.find(s => s.storeId.toString() === selectedStoreId.toString());
         currentStock = storeStock ? storeStock.stock : 0;
+      } else {
+        currentStock = product.stock || 0;
+      }
     }
-
-    const hasVariants = product.hasVariants && Array.isArray(product.variants) && product.variants.length > 0;
 
     let priceDisplay = `$${product.price.toFixed(2)}`;
     if (hasVariants) {
@@ -803,6 +857,10 @@ window.selectVariant = function(productId, variantIdentifier) {
     const cartKey = `${product.id}_${variantIdStr}`;
     const variantTitle = variant.attributes ? Object.values(variant.attributes).join(' / ') : (variant.sku || 'Variant');
 
+    const variantStocksList = Array.isArray(product.variantStocks) ? product.variantStocks : [];
+    const vs = variantStocksList.find(s => s.variantId === variant.id);
+    const vStock = vs ? vs.quantity : ((variant.stock !== undefined && variant.stock !== null) ? variant.stock : (product.currentStock ?? product.stock ?? 0));
+
     const variantProduct = {
         ...product,
         cartKey: cartKey,
@@ -818,7 +876,7 @@ window.selectVariant = function(productId, variantIdentifier) {
         name: `${product.name} - ${variantTitle}`,
         price: (variant.price !== undefined && variant.price !== null && !isNaN(parseFloat(variant.price))) ? parseFloat(variant.price) : product.price,
         cost: (variant.cost !== undefined && variant.cost !== null && !isNaN(parseFloat(variant.cost))) ? parseFloat(variant.cost) : (product.cost || 0),
-        stock: (variant.stock !== undefined && variant.stock !== null) ? variant.stock : product.stock,
+        stock: vStock,
         trackStock: product.trackStock
     };
 
@@ -845,7 +903,11 @@ function addToCart(product) {
           btn.className = 'w-full text-left p-4 rounded-xl border border-gray-200 hover:border-brand-blue hover:bg-blue-50 transition-all font-bold';
           const attrText = v.attributes ? Object.values(v.attributes).join(' / ') : (v.sku || 'Option');
           const vPrice = (v.price !== undefined && v.price !== null && !isNaN(parseFloat(v.price))) ? parseFloat(v.price) : product.price;
-          const vStock = (v.stock !== undefined && v.stock !== null) ? v.stock : (product.currentStock ?? product.stock ?? 0);
+          
+          const variantStocksList = Array.isArray(product.variantStocks) ? product.variantStocks : [];
+          const vs = variantStocksList.find(s => s.variantId === v.id);
+          const vStock = vs ? vs.quantity : ((v.stock !== undefined && v.stock !== null) ? v.stock : (product.currentStock ?? product.stock ?? 0));
+
           btn.innerHTML = `
             <div class="flex justify-between items-center">
                 <span>${attrText}</span>
@@ -1175,6 +1237,15 @@ async function processSale(method) {
     alert("Read-Only Mode: Transactions are disabled.");
     return;
   }
+  if (checkReconciliationLock()) {
+    const lang = localStorage.getItem('pos_language') || 'en';
+    const t = (en, ar) => (lang === 'ar' ? ar : en);
+    alert(t(
+      "This branch is locked for Opening Reconciliation. Transactions are not permitted.",
+      "هذا الفرع مغلق حالياً لإجراء الجرد الافتتاحي. لا يمكن إتمام عمليات البيع لحين اعتماد الجرد."
+    ));
+    return;
+  }
   if (cart.length === 0) return;
 
   // Fix: Define translation helper function
@@ -1267,6 +1338,16 @@ async function processSale(method) {
       clearCart();
       alert(t("Sale processed successfully!", "تمت العملية بنجاح!"));
     } else {
+      if (response.status === 423) {
+        checkReconciliationLock();
+        const errData = await response.json().catch(() => ({}));
+        alert(t(
+          "This branch is locked for Opening Reconciliation: " + (errData.msg || "Operations are paused."),
+          "هذا الفرع مغلق حالياً لإجراء الجرد الافتتاحي: " + (errData.msg || "تم إيقاف العمليات لحين الاعتماد.")
+        ));
+        return;
+      }
+
       // Check for 401 Unauthorized (Session Expired)
       if (response.status === 401) {
         if (cart.length > 0) {

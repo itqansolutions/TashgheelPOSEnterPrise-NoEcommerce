@@ -15,4 +15,5 @@ Thumbs.db
 
 # Temp
 tmp/
+scratch/
 *.backup

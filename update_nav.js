@@ -8,6 +8,7 @@ const items = [
   { href: 'pos.html', icon: '🛒', key: 'nav_pos', text: 'Point of Sale' },
   { href: 'products.html', icon: '📦', key: 'nav_products', text: 'Products' },
   { href: 'inventory.html', icon: '📊', key: 'nav_inventory', text: 'Inventory' },
+  { href: 'reconciliation.html', icon: '📋', key: 'nav_reconciliation', text: 'Opening Reconciliation' },
   { href: 'stock-transfer.html', icon: '🔄', key: 'nav_stock_transfer', text: 'Stock Transfer' },
   { href: 'price-list.html', icon: '💰', key: 'nav_price_list', text: 'Price List' },
   { href: 'purchases.html', icon: '📥', key: 'nav_purchases', text: 'Purchases' },

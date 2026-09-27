@@ -4,6 +4,7 @@ const auth = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
 const prisma = require('../prisma');
 const { acquireStoreInventoryLock } = require('../services/inventoryLock.service');
+const inventoryMutationService = require('../services/inventoryMutation.service');
 
 // ================= STORES (WAREHOUSES) =================
 
@@ -305,8 +306,12 @@ router.put('/settings', auth, async (req, res) => {
 // @route   GET /api/products
 router.get('/products', auth, async (req, res) => {
     try {
+        const { storeId } = req.query;
         const products = await prisma.product.findMany({
-            where: { tenantId: req.tenantId }
+            where: { tenantId: req.tenantId },
+            include: {
+                variantStocks: storeId ? { where: { storeId: String(storeId) } } : true
+            }
         });
         res.json(products);
     } catch (err) {
@@ -396,62 +401,6 @@ router.delete('/products/:id', auth, async (req, res) => {
 
 // ================= SALES =================
 
-// Helper to update product stock
-async function updateProductStock(tenantId, productId, barcode, qtyChange, storeId, variantId = null) {
-    let product = null;
-    if (productId) {
-        product = await prisma.product.findFirst({ where: { id: productId, tenantId } });
-    }
-    // If not found by ID, try top-level barcode
-    if (!product && barcode) {
-        product = await prisma.product.findFirst({ where: { barcode, tenantId } });
-    }
-    // Backward compatibility: If still not found, check variants JSON
-    if (!product && (variantId || barcode)) {
-        const candidateProducts = await prisma.product.findMany({
-            where: { tenantId, hasVariants: true }
-        });
-        product = candidateProducts.find(p => 
-            Array.isArray(p.variants) && p.variants.some(v => 
-                (variantId && v.id === variantId) ||
-                (barcode && (v.barcode === barcode || v.sku === barcode))
-            )
-        ) || null;
-    }
-
-    if (product && product.trackStock !== false) {
-        let newStock = product.stock + qtyChange;
-        let variants = Array.isArray(product.variants) ? product.variants : [];
-
-        if (product.hasVariants && (variantId || barcode)) {
-            // Update variant stock if variant matched
-            const vIndex = variants.findIndex(v => 
-                (variantId && v.id === variantId) ||
-                (barcode && (v.barcode === barcode || v.sku === barcode))
-            );
-            if (vIndex >= 0) {
-                variants[vIndex].stock = (variants[vIndex].stock || 0) + qtyChange;
-            }
-        }
-
-        const stores = Array.isArray(product.stores) ? product.stores : [];
-        if (storeId) {
-            const storeIdx = stores.findIndex(s => s.storeId === storeId);
-            if (storeIdx >= 0) {
-                stores[storeIdx].stock = (stores[storeIdx].stock || 0) + qtyChange;
-            } else {
-                stores.push({ storeId, stock: qtyChange });
-            }
-        }
-
-        await prisma.product.update({
-            where: { id: product.id },
-            data: { stock: newStock, stores, variants }
-        });
-    }
-    return product;
-}
-
 // @route   POST /api/sales
 router.post('/sales', auth, async (req, res) => {
     try {
@@ -475,79 +424,81 @@ router.post('/sales', auth, async (req, res) => {
         const receiptId = String(shiftCount + 1);
 
         const effectiveStoreId = req.body.storeId || shift.storeId;
-        if (effectiveStoreId) {
-            await acquireStoreInventoryLock(prisma, effectiveStoreId);
-        }
 
-        const sale = await prisma.sale.create({
-            data: {
-                tenantId: req.tenantId,
-                storeId: effectiveStoreId,
-                receiptId,
-                shiftId: shift.id,
-                date: new Date(),
-                method: paymentMethod,
-                orderType: orderType || 'instore',
-                platform: req.body.platform || 'local',
-                onlineOrderId: req.body.onlineOrderId || null,
-                cashier: req.user.username,
-                salesman: salesman || null,
-                customerId: req.body.customerId || null,
-                total,
-                taxAmount: req.body.taxAmount || 0,
-                taxName: req.body.taxName || null,
-                taxRate: req.body.taxRate || null,
-                items: items || [],
-                splitPayments: req.body.splitPayments || []
+        let createdSale = null;
+
+        await prisma.$transaction(async (tx) => {
+            if (effectiveStoreId) {
+                await acquireStoreInventoryLock(tx, effectiveStoreId);
+            }
+
+            createdSale = await tx.sale.create({
+                data: {
+                    tenantId: req.tenantId,
+                    storeId: effectiveStoreId,
+                    receiptId,
+                    shiftId: shift.id,
+                    date: new Date(),
+                    method: paymentMethod,
+                    orderType: orderType || 'instore',
+                    platform: req.body.platform || 'local',
+                    onlineOrderId: req.body.onlineOrderId || null,
+                    cashier: req.user.username,
+                    salesman: salesman || null,
+                    customerId: req.body.customerId || null,
+                    total,
+                    taxAmount: req.body.taxAmount || 0,
+                    taxName: req.body.taxName || null,
+                    taxRate: req.body.taxRate || null,
+                    items: items || [],
+                    splitPayments: req.body.splitPayments || []
+                }
+            });
+
+            // Handle credit sales
+            if (paymentMethod === 'credit' && req.body.customerId) {
+                const customer = await tx.customer.findFirst({
+                    where: { id: req.body.customerId, tenantId: req.tenantId }
+                });
+                if (customer) {
+                    await tx.customer.update({
+                        where: { id: customer.id },
+                        data: { balance: customer.balance + total }
+                    });
+                    await tx.ledgerTransaction.create({
+                        data: {
+                            tenantId: req.tenantId,
+                            entityType: 'customer',
+                            entityId: customer.id,
+                            type: 'sale',
+                            amount: total,
+                            referenceId: createdSale.id,
+                            date: new Date(),
+                            cashier: req.user.username,
+                            notes: 'Credit Sale - Receipt: ' + receiptId
+                        }
+                    });
+                }
+            }
+
+            // Authoritative Inventory Deduction via Centralized Service
+            if (effectiveStoreId && Array.isArray(items) && items.length > 0) {
+                await inventoryMutationService.recordSale(tx, {
+                    tenantId: req.tenantId,
+                    storeId: effectiveStoreId,
+                    saleId: createdSale.id,
+                    items,
+                    performedBy: req.user.username,
+                    notes: `Sale Receipt: ${receiptId}`
+                });
             }
         });
-
-        // Handle credit sales
-        if (paymentMethod === 'credit') {
-            if (!req.body.customerId) {
-                return res.status(400).json({ msg: 'Customer ID is required for credit sales' });
-            }
-            const customer = await prisma.customer.findFirst({
-                where: { id: req.body.customerId, tenantId: req.tenantId }
-            });
-            if (customer) {
-                await prisma.customer.update({
-                    where: { id: customer.id },
-                    data: { balance: customer.balance + total }
-                });
-                await prisma.ledgerTransaction.create({
-                    data: {
-                        tenantId: req.tenantId,
-                        entityType: 'customer',
-                        entityId: customer.id,
-                        type: 'sale',
-                        amount: total,
-                        referenceId: sale.id,
-                        date: new Date(),
-                        cashier: req.user.username,
-                        notes: 'Credit Sale - Receipt: ' + receiptId
-                    }
-                });
-            }
-        }
-
-        // Update stock for each item
-        for (const item of items) {
-            await updateProductStock(
-                req.tenantId,
-                item.productId || null,
-                item.barcode || item.code || null,
-                -item.qty,
-                effectiveStoreId,
-                item.variantId || null
-            );
-        }
 
         // Fetch tenant settings to return with sale
         const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
 
         res.json({
-            sale,
+            sale: createdSale,
             settings: tenant ? {
                 shopName: tenant.shopName,
                 shopAddress: tenant.shopAddress,
@@ -562,7 +513,7 @@ router.post('/sales', auth, async (req, res) => {
             return res.status(423).json({ msg: err.message, code: err.code });
         }
         console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(err.statusCode || 500).json({ msg: err.message || 'Server Error' });
     }
 });
 
@@ -630,78 +581,105 @@ router.post('/sales/:id/return', auth, async (req, res) => {
     try {
         const { items } = req.body;
 
-        let sale = await prisma.sale.findFirst({
-            where: { id: req.params.id, tenantId: req.tenantId }
-        });
-        if (!sale) {
-            sale = await prisma.sale.findFirst({
-                where: { receiptId: req.params.id, tenantId: req.tenantId }
+        let updatedSale = null;
+
+        await prisma.$transaction(async (tx) => {
+            let sale = await tx.sale.findFirst({
+                where: { id: req.params.id, tenantId: req.tenantId }
             });
-        }
-        if (!sale) return res.status(404).json({ msg: 'Sale not found' });
-
-        if (sale.storeId) {
-            await acquireStoreInventoryLock(prisma, sale.storeId);
-        }
-
-        const saleItems = Array.isArray(sale.items) ? sale.items : [];
-        const returnRecord = {
-            items: [],
-            totalRefund: 0,
-            cashier: req.user.username,
-            date: new Date().toISOString()
-        };
-
-        for (const returnItem of items) {
-            const saleItem = saleItems.find(i => 
-                (returnItem.variantId && i.variantId === returnItem.variantId) ||
-                i.code === returnItem.code || 
-                i._id === returnItem.code ||
-                (returnItem.code && (i.variantId === returnItem.code || i.barcode === returnItem.code || i.sku === returnItem.code))
-            );
-            if (!saleItem) continue;
-
-            const remainingQty = saleItem.qty - (saleItem.returnedQty || 0);
-            if (returnItem.qty > remainingQty) {
-                return res.status(400).json({ msg: `Cannot return more than sold quantity for item ${saleItem.name}` });
+            if (!sale) {
+                sale = await tx.sale.findFirst({
+                    where: { receiptId: req.params.id, tenantId: req.tenantId }
+                });
+            }
+            if (!sale) {
+                const notFound = new Error('Sale not found');
+                notFound.statusCode = 404;
+                throw notFound;
             }
 
-            saleItem.returnedQty = (saleItem.returnedQty || 0) + returnItem.qty;
+            if (sale.storeId) {
+                await acquireStoreInventoryLock(tx, sale.storeId);
+            }
 
-            let itemPrice = saleItem.price;
-            if (saleItem.discount) {
-                if (saleItem.discount.type === 'percent') {
-                    itemPrice = itemPrice - (itemPrice * saleItem.discount.value / 100);
-                } else if (saleItem.discount.type === 'value') {
-                    itemPrice = itemPrice - saleItem.discount.value;
+            const saleItems = Array.isArray(sale.items) ? sale.items : [];
+            const returnRecord = {
+                items: [],
+                totalRefund: 0,
+                cashier: req.user.username,
+                date: new Date().toISOString()
+            };
+            const itemsToRestore = [];
+
+            for (const returnItem of items) {
+                const saleItem = saleItems.find(i => 
+                    (returnItem.variantId && i.variantId === returnItem.variantId) ||
+                    i.code === returnItem.code || 
+                    i._id === returnItem.code ||
+                    (returnItem.code && (i.variantId === returnItem.code || i.barcode === returnItem.code || i.sku === returnItem.code))
+                );
+                if (!saleItem) continue;
+
+                const remainingQty = saleItem.qty - (saleItem.returnedQty || 0);
+                if (returnItem.qty > remainingQty) {
+                    const badQtyErr = new Error(`Cannot return more than sold quantity for item ${saleItem.name}`);
+                    badQtyErr.statusCode = 400;
+                    throw badQtyErr;
                 }
+
+                saleItem.returnedQty = (saleItem.returnedQty || 0) + returnItem.qty;
+
+                let itemPrice = saleItem.price;
+                if (saleItem.discount) {
+                    if (saleItem.discount.type === 'percent') {
+                        itemPrice = itemPrice - (itemPrice * saleItem.discount.value / 100);
+                    } else if (saleItem.discount.type === 'value') {
+                        itemPrice = itemPrice - saleItem.discount.value;
+                    }
+                }
+                const refundAmount = itemPrice * returnItem.qty;
+
+                returnRecord.items.push({
+                    code: saleItem.code,
+                    qty: returnItem.qty,
+                    refundAmount,
+                    reason: returnItem.reason || req.body.reason
+                });
+                returnRecord.totalRefund += refundAmount;
+
+                itemsToRestore.push({
+                    productId: saleItem.productId || null,
+                    barcode: saleItem.barcode || saleItem.code || null,
+                    code: saleItem.code || null,
+                    qty: returnItem.qty,
+                    variantId: saleItem.variantId || null
+                });
             }
-            const refundAmount = itemPrice * returnItem.qty;
 
-            returnRecord.items.push({
-                code: saleItem.code,
-                qty: returnItem.qty,
-                refundAmount,
-                reason: returnItem.reason || req.body.reason
-            });
-            returnRecord.totalRefund += refundAmount;
+            if (returnRecord.items.length === 0) {
+                const noValidErr = new Error('No valid items to return');
+                noValidErr.statusCode = 400;
+                throw noValidErr;
+            }
 
-            // Restore product stock
-            await updateProductStock(
-                req.tenantId,
-                saleItem.productId || null,
-                saleItem.barcode || saleItem.code || null,
-                returnItem.qty,
-                sale.storeId,
-                saleItem.variantId || null
-            );
-        }
+            // Restore stock via centralized inventory mutation service
+            if (sale.storeId && itemsToRestore.length > 0) {
+                const returnRefId = 'RET_' + sale.id + '_' + Date.now();
+                await inventoryMutationService.recordReturn(tx, {
+                    tenantId: req.tenantId,
+                    storeId: sale.storeId,
+                    returnId: returnRefId,
+                    saleId: sale.id,
+                    items: itemsToRestore,
+                    performedBy: req.user.username,
+                    notes: `Return for receipt ${sale.receiptId}`
+                });
+            }
 
-        if (returnRecord.items.length > 0) {
             const returns = Array.isArray(sale.returns) ? [...sale.returns, returnRecord] : [returnRecord];
             const allReturned = saleItems.every(i => i.qty === (i.returnedQty || 0));
 
-            const updated = await prisma.sale.update({
+            updatedSale = await tx.sale.update({
                 where: { id: sale.id },
                 data: {
                     items: saleItems,
@@ -709,64 +687,70 @@ router.post('/sales/:id/return', auth, async (req, res) => {
                     status: allReturned ? 'returned' : 'partial_returned'
                 }
             });
-            res.json(updated);
-        } else {
-            res.status(400).json({ msg: 'No valid items to return' });
-        }
+        });
+
+        res.json(updatedSale);
     } catch (err) {
         if (err.statusCode === 423 || err.code === 'STORE_LOCKED_FOR_RECONCILIATION') {
             return res.status(423).json({ msg: err.message, code: err.code });
         }
         console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(err.statusCode || 500).json({ msg: err.message || 'Server Error' });
     }
 });
 
 // @route   POST /api/sales/:id/cancel
 router.post('/sales/:id/cancel', auth, async (req, res) => {
     try {
-        const sale = await prisma.sale.findFirst({
-            where: { id: req.params.id, tenantId: req.tenantId }
-        });
-        if (!sale) return res.status(404).json({ msg: 'Sale not found' });
-
-        if (sale.storeId) {
-            await acquireStoreInventoryLock(prisma, sale.storeId);
-        }
-
-        if (sale.status === 'cancelled') {
-            return res.status(400).json({ msg: 'Sale already cancelled' });
-        }
-
-        // Restore stock for each item
-        const saleItems = Array.isArray(sale.items) ? sale.items : [];
-        for (const item of saleItems) {
-            await updateProductStock(
-                req.tenantId,
-                item.productId || null,
-                item.barcode || item.code || null,
-                item.qty,
-                sale.storeId,
-                item.variantId || null
-            );
-        }
-
-        await prisma.sale.update({
-            where: { id: sale.id },
-            data: {
-                status: 'cancelled',
-                returnReason: req.body.reason || 'Cancelled'
+        await prisma.$transaction(async (tx) => {
+            const sale = await tx.sale.findFirst({
+                where: { id: req.params.id, tenantId: req.tenantId }
+            });
+            if (!sale) {
+                const notFound = new Error('Sale not found');
+                notFound.statusCode = 404;
+                throw notFound;
             }
-        });
 
-        // Log action
-        await prisma.auditLog.create({
-            data: {
-                tenantId: req.tenantId,
-                user: req.user.username,
-                action: 'CANCEL_SALE',
-                details: { saleId: sale.id, receiptId: sale.receiptId }
+            if (sale.storeId) {
+                await acquireStoreInventoryLock(tx, sale.storeId);
             }
+
+            if (sale.status === 'cancelled') {
+                const alreadyCancelled = new Error('Sale already cancelled');
+                alreadyCancelled.statusCode = 400;
+                throw alreadyCancelled;
+            }
+
+            const saleItems = Array.isArray(sale.items) ? sale.items : [];
+            if (sale.storeId && saleItems.length > 0) {
+                await inventoryMutationService.recordCancelSale(tx, {
+                    tenantId: req.tenantId,
+                    storeId: sale.storeId,
+                    cancelId: 'CANCEL_' + sale.id,
+                    saleId: sale.id,
+                    items: saleItems,
+                    performedBy: req.user.username,
+                    notes: `Cancelled sale ${sale.receiptId}: ${req.body.reason || 'Cancelled'}`
+                });
+            }
+
+            await tx.sale.update({
+                where: { id: sale.id },
+                data: {
+                    status: 'cancelled',
+                    returnReason: req.body.reason || 'Cancelled'
+                }
+            });
+
+            await tx.auditLog.create({
+                data: {
+                    tenantId: req.tenantId,
+                    user: req.user.username,
+                    action: 'CANCEL_SALE',
+                    details: { saleId: sale.id, receiptId: sale.receiptId }
+                }
+            });
         });
 
         res.json({ msg: 'Sale cancelled and stock restored' });
@@ -775,7 +759,7 @@ router.post('/sales/:id/cancel', auth, async (req, res) => {
             return res.status(423).json({ msg: err.message, code: err.code });
         }
         console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(err.statusCode || 500).json({ msg: err.message || 'Server Error' });
     }
 });
 
@@ -1087,56 +1071,57 @@ router.post('/inventory/adjust', auth, async (req, res) => {
     try {
         const { items, storeId } = req.body;
         if (!storeId) return res.status(400).json({ msg: 'Store is required for stock adjustment' });
-        await acquireStoreInventoryLock(prisma, storeId);
-
-        const adjustmentItems = [];
-
-        for (const item of items) {
-            const product = await prisma.product.findFirst({
-                where: { id: item.productId, tenantId: req.tenantId }
-            });
-            if (product) {
-                const oldStock = product.stock;
-                const newStock = parseInt(item.newStock);
-                const difference = newStock - oldStock;
-
-                if (difference !== 0) {
-                    const stores = Array.isArray(product.stores) ? product.stores : [];
-                    const storeIdx = stores.findIndex(s => s.storeId === storeId);
-                    if (storeIdx >= 0) {
-                        stores[storeIdx].stock = (stores[storeIdx].stock || 0) + difference;
-                    } else {
-                        stores.push({ storeId, stock: difference });
-                    }
-
-                    await prisma.product.update({
-                        where: { id: product.id },
-                        data: { stock: newStock, stores }
-                    });
-                }
-
-                adjustmentItems.push({
-                    productId: product.id,
-                    productName: product.name,
-                    oldStock,
-                    newStock,
-                    difference,
-                    reason: item.reason || 'Manual Adjustment'
-                });
-            }
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ msg: 'Items array is required' });
         }
 
-        if (adjustmentItems.length > 0) {
-            const adjustment = await prisma.stockAdjustment.create({
-                data: {
-                    tenantId: req.tenantId,
-                    storeId,
-                    adjustedBy: req.user.username,
-                    date: new Date(),
-                    items: adjustmentItems
-                }
+        let createdAdjustment = null;
+
+        await prisma.$transaction(async (tx) => {
+            await acquireStoreInventoryLock(tx, storeId);
+
+            const adjustmentId = 'ADJ_' + Date.now();
+            const mutationResult = await inventoryMutationService.recordAdjustment(tx, {
+                tenantId: req.tenantId,
+                storeId,
+                adjustmentId,
+                items,
+                performedBy: req.user.username,
+                notes: 'Manual Stock Adjustment'
             });
-            res.json({ msg: 'Stock adjusted successfully', adjustment });
+
+            const adjustmentItems = [];
+            for (const m of (mutationResult.movements || [])) {
+                let prodName = 'Product';
+                const p = await tx.product.findUnique({ where: { id: m.productId } });
+                if (p) prodName = p.name;
+
+                adjustmentItems.push({
+                    productId: m.productId,
+                    productName: prodName,
+                    variantId: m.variantId || null,
+                    oldStock: m.quantityBefore,
+                    newStock: m.quantityAfter,
+                    difference: m.quantityDelta,
+                    reason: m.notes || 'Manual Adjustment'
+                });
+            }
+
+            if (adjustmentItems.length > 0) {
+                createdAdjustment = await tx.stockAdjustment.create({
+                    data: {
+                        tenantId: req.tenantId,
+                        storeId,
+                        adjustedBy: req.user.username,
+                        date: new Date(),
+                        items: adjustmentItems
+                    }
+                });
+            }
+        });
+
+        if (createdAdjustment) {
+            res.json({ msg: 'Stock adjusted successfully', adjustment: createdAdjustment });
         } else {
             res.json({ msg: 'No changes made' });
         }
@@ -1144,6 +1129,62 @@ router.post('/inventory/adjust', auth, async (req, res) => {
         if (err.statusCode === 423 || err.code === 'STORE_LOCKED_FOR_RECONCILIATION') {
             return res.status(423).json({ msg: err.message, code: err.code });
         }
+        console.error(err.message);
+        res.status(err.statusCode || 500).json({ msg: err.message || 'Server Error' });
+    }
+});
+
+// @route   GET /api/inventory/store-stock
+// @desc    Get real-time authoritative stock for a warehouse directly from VariantStock
+router.get('/inventory/store-stock', auth, async (req, res) => {
+    try {
+        const { storeId } = req.query;
+        if (!storeId) {
+            return res.status(400).json({ msg: 'storeId is required' });
+        }
+
+        const stocks = await prisma.variantStock.findMany({
+            where: { tenantId: req.tenantId, storeId: String(storeId) }
+        });
+
+        res.json({ storeId, stocks });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+// @route   GET /api/inventory/movements
+// @desc    Get paginated inventory movements ledger
+router.get('/inventory/movements', auth, async (req, res) => {
+    try {
+        const { storeId, productId, variantId, limit = 50, page = 1 } = req.query;
+        const take = Math.min(100, Math.max(1, parseInt(limit) || 50));
+        const skip = (Math.max(1, parseInt(page) || 1) - 1) * take;
+
+        const where = {
+            tenantId: req.tenantId,
+            ...(storeId && { storeId: String(storeId) }),
+            ...(productId && { productId: String(productId) }),
+            ...(variantId && { variantId: String(variantId) })
+        };
+
+        const [movements, total] = await Promise.all([
+            prisma.inventoryMovement.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                take,
+                skip,
+                include: {
+                    product: { select: { id: true, name: true, barcode: true } },
+                    store: { select: { id: true, name: true } }
+                }
+            }),
+            prisma.inventoryMovement.count({ where })
+        ]);
+
+        res.json({ movements, total, page: parseInt(page) || 1, limit: take });
+    } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');
     }
@@ -1527,108 +1568,83 @@ router.post('/purchases', auth, async (req, res) => {
     try {
         const { supplierId, items, total, cashPaid, storeId } = req.body;
 
-        if (storeId) {
-            await acquireStoreInventoryLock(prisma, storeId);
-        }
-
         const supplier = await prisma.supplier.findFirst({
             where: { id: supplierId, tenantId: req.tenantId }
         });
         if (!supplier) return res.status(404).json({ msg: 'Supplier not found' });
 
-        const purchaseCount = await prisma.purchase.count({ where: { tenantId: req.tenantId } });
-        const receiptId = 'PUR-' + (purchaseCount + 1);
+        let createdPurchase = null;
+        let finalSupplierBalance = 0;
 
-        const purchase = await prisma.purchase.create({
-            data: {
-                tenantId: req.tenantId,
-                storeId: req.body.storeId,
-                supplierId,
-                receiptId,
-                date: new Date(),
-                total,
-                cashPaid: cashPaid || 0,
-                items: items || [],
-                cashier: req.user.username
+        await prisma.$transaction(async (tx) => {
+            if (storeId) {
+                await acquireStoreInventoryLock(tx, storeId);
             }
-        });
 
-        // Update Supplier Balance & Ledger
-        const owedAmount = total - (cashPaid || 0);
+            const purchaseCount = await tx.purchase.count({ where: { tenantId: req.tenantId } });
+            const receiptId = 'PUR-' + (purchaseCount + 1);
 
-        if (owedAmount > 0) {
-            await prisma.supplier.update({
-                where: { id: supplier.id },
-                data: { balance: supplier.balance + owedAmount }
-            });
-
-            await prisma.ledgerTransaction.create({
+            createdPurchase = await tx.purchase.create({
                 data: {
                     tenantId: req.tenantId,
-                    entityType: 'supplier',
-                    entityId: supplier.id,
-                    type: 'purchase',
-                    amount: owedAmount,
-                    referenceId: purchase.id,
+                    storeId,
+                    supplierId,
+                    receiptId,
                     date: new Date(),
-                    cashier: req.user.username,
-                    notes: 'Purchase - Receipt: ' + receiptId + (cashPaid > 0 ? ` (Total: ${total}, Paid: ${cashPaid})` : '')
+                    total,
+                    cashPaid: cashPaid || 0,
+                    items: items || [],
+                    cashier: req.user.username
                 }
             });
-        }
 
-        // Update stock for each item
-        for (const item of items) {
-            let product = null;
-            if (item.productId) {
-                product = await prisma.product.findFirst({ where: { id: item.productId, tenantId: req.tenantId } });
-            }
-            if (!product && item.code) {
-                product = await prisma.product.findFirst({ where: { barcode: item.code, tenantId: req.tenantId } });
-            }
+            // Update Supplier Balance & Ledger
+            const owedAmount = total - (cashPaid || 0);
 
-            if (product && product.trackStock !== false) {
-                const oldStock = Math.max(0, product.stock);
-                const newQty = item.qty;
-                const newCost = item.cost || 0;
-                const oldCost = product.cost || 0;
+            if (owedAmount > 0) {
+                await tx.supplier.update({
+                    where: { id: supplier.id },
+                    data: { balance: supplier.balance + owedAmount }
+                });
 
-                let updatedCost = product.cost;
-                if (oldStock + newQty > 0) {
-                    updatedCost = ((oldStock * oldCost) + (newQty * newCost)) / (oldStock + newQty);
-                } else {
-                    updatedCost = newCost;
-                }
-
-                const stores = Array.isArray(product.stores) ? product.stores : [];
-                const storeId = req.body.storeId;
-                const storeIdx = stores.findIndex(s => s.storeId === storeId);
-                if (storeIdx >= 0) {
-                    stores[storeIdx].stock = (stores[storeIdx].stock || 0) + newQty;
-                } else {
-                    stores.push({ storeId, stock: newQty });
-                }
-
-                await prisma.product.update({
-                    where: { id: product.id },
+                await tx.ledgerTransaction.create({
                     data: {
-                        stock: product.stock + newQty,
-                        cost: updatedCost,
-                        stores
+                        tenantId: req.tenantId,
+                        entityType: 'supplier',
+                        entityId: supplier.id,
+                        type: 'purchase',
+                        amount: owedAmount,
+                        referenceId: createdPurchase.id,
+                        date: new Date(),
+                        cashier: req.user.username,
+                        notes: 'Purchase - Receipt: ' + receiptId + (cashPaid > 0 ? ` (Total: ${total}, Paid: ${cashPaid})` : '')
                     }
                 });
             }
-        }
 
-        // Re-fetch updated supplier balance
-        const updatedSupplier = await prisma.supplier.findUnique({ where: { id: supplier.id } });
-        res.json({ purchase, supplierBalance: updatedSupplier.balance });
+            // Centralized Inventory Mutation
+            if (storeId && Array.isArray(items) && items.length > 0) {
+                await inventoryMutationService.recordPurchase(tx, {
+                    tenantId: req.tenantId,
+                    storeId,
+                    purchaseId: createdPurchase.id,
+                    items,
+                    performedBy: req.user.username,
+                    notes: `Purchase: ${receiptId}`
+                });
+            }
+
+            const updatedSupplier = await tx.supplier.findUnique({ where: { id: supplier.id } });
+            finalSupplierBalance = updatedSupplier ? updatedSupplier.balance : 0;
+        });
+
+        res.json({ purchase: createdPurchase, supplierBalance: finalSupplierBalance });
     } catch (err) {
         if (err.statusCode === 423 || err.code === 'STORE_LOCKED_FOR_RECONCILIATION') {
             return res.status(423).json({ msg: err.message, code: err.code });
         }
         console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(err.statusCode || 500).json({ msg: err.message || 'Server Error' });
     }
 });
 

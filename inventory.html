@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8">
@@ -18,10 +18,11 @@
   <div style="display: flex; flex-direction: row; min-height: 100vh; width: 100vw; margin: 0; padding: 0;">
     <aside class="bg-gradient-to-b from-brand-dark-2 to-brand-dark text-white flex flex-col shadow-2xl z-20 shrink-0" style="width: 260px; min-width: 260px; min-height: 100vh;">
       <div class="sidebar-header"><h2 data-i18n="app_title">🏪 Tashgheel POS</h2><p data-i18n="enhanced_edition">Enterprise Edition</p></div>
-            <nav class="flex-1 overflow-y-auto py-4">
+                              <nav class="flex-1 overflow-y-auto py-4">
         <a href="pos.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_pos">🛒 Point of Sale</a>
         <a href="products.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_products">📦 Products</a>
         <a href="inventory.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-brand-blue bg-white/10 text-white" data-i18n="nav_inventory">📊 Inventory</a>
+        <a href="reconciliation.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_reconciliation">📋 Opening Reconciliation</a>
         <a href="stock-transfer.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stock_transfer">🔄 Stock Transfer</a>
         <a href="price-list.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_price_list">💰 Price List</a>
         <a href="purchases.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_purchases">📥 Purchases</a>
@@ -64,7 +65,22 @@
             <div class="flex items-center gap-2">
               <input type="text" id="inventory-search" placeholder="Search product..." class="search-box" style="width:260px;" data-i18n-placeholder="search_placeholder">
               <button onclick="loadInventory()" class="btn btn-secondary">🔄</button>
+              <a href="reconciliation.html" class="btn btn-primary text-sm flex items-center gap-1.5" style="text-decoration:none;">
+                <i class="fas fa-clipboard-check"></i> <span data-i18n="nav_reconciliation">Opening Reconciliation</span>
+              </a>
             </div>
+          </div>
+          <div id="reconciliation-lock-banner" style="display:none;" class="m-4 p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 flex justify-between items-center shadow-sm">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">🔒</span>
+              <div>
+                <strong class="font-bold block" data-i18n="reconciliation_banner_title">المخزن مغلق حالياً لإجراء الجرد الافتتاحي</strong>
+                <span class="text-xs text-amber-800" data-i18n="reconciliation_banner_msg">تم تجميد التعديلات اليدوية وحركات المخزون لهذا المخزن لحين اعتماد الجرد.</span>
+              </div>
+            </div>
+            <a href="reconciliation.html" class="btn btn-warning btn-sm font-bold shadow" style="text-decoration:none;">
+              📋 جلسة الجرد / Session
+            </a>
           </div>
           <div class="overflow-x-auto">
             <table class="data-table">
@@ -92,10 +108,12 @@
       <h3 data-i18n="stock_adjustment">🛠️ Stock Adjustment</h3>
       <div id="adjust-item-info" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 6px;">
         <strong id="adjust-product-name">Product Name</strong><br>
+        <span id="adjust-variant-name" class="text-xs font-semibold text-brand-blue" style="display:none;"></span><br>
         <span data-i18n="warehouse">Warehouse:</span> <span id="adjust-warehouse-name">Store Name</span>
       </div>
       <form id="adjust-form">
         <input type="hidden" id="adjust-product-id">
+        <input type="hidden" id="adjust-variant-id">
         <div class="form-group">
           <label data-i18n="current_recorded_stock">Currently Recorded:</label>
           <input type="number" id="adjust-old-stock" readonly style="background: #eee;">

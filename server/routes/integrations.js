@@ -23,6 +23,7 @@ const WooCommerceConnector = require('../integrations/woocommerce');
 const JumiaConnector = require('../integrations/jumia');
 const AmazonConnector = require('../integrations/amazon');
 const NoonConnector = require('../integrations/noon');
+const inventoryMutationService = require('../services/inventoryMutation.service');
 
 // ─────────────────────────────────────────────
 // HELPERS
@@ -535,47 +536,50 @@ router.post('/orders/:id/accept', auth, async (req, res) => {
                 qty: item.qty,
                 price: item.price,
                 productId: item.productId,
+                variantId: item.variantId || null,
                 discount: { type: 'none', value: 0 }
             });
-
-            // Deduct stock
-            if (item.productId) {
-                const product = await prisma.product.findFirst({
-                    where: { id: item.productId, tenantId: req.tenantId }
-                });
-                if (product && product.trackStock !== false) {
-                    const stores = Array.isArray(product.stores) ? product.stores : [];
-                    const storeIdx = stores.findIndex(s => s.storeId === shift.storeId);
-                    if (storeIdx >= 0) {
-                        stores[storeIdx].stock = Math.max(0, (stores[storeIdx].stock || 0) - item.qty);
-                    } else {
-                        stores.push({ storeId: shift.storeId, stock: -item.qty });
-                    }
-                    await prisma.product.update({
-                        where: { id: product.id },
-                        data: { stock: Math.max(0, product.stock - item.qty), stores }
-                    });
-                }
-            }
         }
 
-        const shiftCount = await prisma.sale.count({ where: { shiftId: shift.id } });
-        const receiptId = `${order.platform.toUpperCase().slice(0, 2)}-${shiftCount + 1}`;
+        const sale = await prisma.$transaction(async (tx) => {
+            const shiftCount = await tx.sale.count({ where: { shiftId: shift.id } });
+            const receiptId = `${order.platform.toUpperCase().slice(0, 2)}-${shiftCount + 1}`;
 
-        const sale = await prisma.sale.create({
-            data: {
-                tenantId: req.tenantId,
-                storeId: shift.storeId,
-                receiptId,
-                shiftId: shift.id,
-                date: new Date(),
-                method: paymentMethod,
-                orderType: 'online',
-                cashier: req.user.username,
-                total: order.total,
-                items: saleItems,
-                splitPayments: []
+            const createdSale = await tx.sale.create({
+                data: {
+                    tenantId: req.tenantId,
+                    storeId: shift.storeId,
+                    receiptId,
+                    shiftId: shift.id,
+                    date: new Date(),
+                    method: paymentMethod,
+                    orderType: 'online',
+                    cashier: req.user.username,
+                    total: order.total,
+                    items: saleItems,
+                    splitPayments: []
+                }
+            });
+
+            // Record inventory movements atomically through inventoryMutationService
+            const mutationItems = saleItems.filter(i => i.productId).map(i => ({
+                productId: i.productId,
+                variantId: i.variantId || null,
+                qty: i.qty
+            }));
+
+            if (mutationItems.length > 0) {
+                await inventoryMutationService.recordSale(tx, {
+                    tenantId: req.tenantId,
+                    storeId: shift.storeId,
+                    saleId: createdSale.id,
+                    items: mutationItems,
+                    performedBy: req.user.username,
+                    notes: `Online Order ${order.platform} #${order.platformOrderId || order.id}`
+                });
             }
+
+            return createdSale;
         });
 
         const updatedOrder = await prisma.onlineOrder.update({

@@ -3,61 +3,10 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
 const prisma = require('../prisma');
+const { acquireStoreInventoryLock } = require('../services/inventoryLock.service');
+const inventoryMutationService = require('../services/inventoryMutation.service');
 
 // ================= OPEN ORDERS =================
-
-// Helper: update product stock (same logic as sales route)
-async function updateProductStock(tenantId, productId, barcode, qtyChange, storeId, variantId = null) {
-    let product = null;
-    if (productId) {
-        product = await prisma.product.findFirst({ where: { id: productId, tenantId } });
-    }
-    if (!product && barcode) {
-        product = await prisma.product.findFirst({ where: { barcode, tenantId } });
-    }
-    if (!product && (variantId || barcode)) {
-        const candidateProducts = await prisma.product.findMany({
-            where: { tenantId, hasVariants: true }
-        });
-        product = candidateProducts.find(p => 
-            Array.isArray(p.variants) && p.variants.some(v => 
-                (variantId && v.id === variantId) ||
-                (barcode && (v.barcode === barcode || v.sku === barcode))
-            )
-        ) || null;
-    }
-
-    if (product && product.trackStock !== false) {
-        let newStock = product.stock + qtyChange;
-        let variants = Array.isArray(product.variants) ? product.variants : [];
-
-        if (product.hasVariants && (variantId || barcode)) {
-            const vIndex = variants.findIndex(v => 
-                (variantId && v.id === variantId) ||
-                (barcode && (v.barcode === barcode || v.sku === barcode))
-            );
-            if (vIndex >= 0) {
-                variants[vIndex].stock = (variants[vIndex].stock || 0) + qtyChange;
-            }
-        }
-
-        const stores = Array.isArray(product.stores) ? product.stores : [];
-        if (storeId) {
-            const storeIdx = stores.findIndex(s => s.storeId === storeId);
-            if (storeIdx >= 0) {
-                stores[storeIdx].stock = (stores[storeIdx].stock || 0) + qtyChange;
-            } else {
-                stores.push({ storeId, stock: qtyChange });
-            }
-        }
-
-        await prisma.product.update({
-            where: { id: product.id },
-            data: { stock: newStock, stores, variants }
-        });
-    }
-    return product;
-}
 
 // Helper: verify manager password against tenant record
 async function verifyManagerPassword(tenantId, password) {
@@ -76,73 +25,80 @@ router.post('/', auth, async (req, res) => {
             return res.status(400).json({ msg: 'storeId and items are required' });
         }
 
-        // Calculate total
-        const totalAmount = items.reduce((sum, item) => sum + (parseFloat(item.price) * parseInt(item.qty || 1)), 0);
+        let order = null;
 
-        // Generate receiptId
-        const count = await prisma.openOrder.count({ where: { tenantId: req.tenantId } });
-        const receiptId = 'OO-' + (count + 1);
+        await prisma.$transaction(async (tx) => {
+            await acquireStoreInventoryLock(tx, storeId);
 
-        // Create open order
-        const order = await prisma.openOrder.create({
-            data: {
+            // Calculate total
+            const totalAmount = items.reduce((sum, item) => sum + (parseFloat(item.price) * parseInt(item.qty || 1)), 0);
+
+            // Generate receiptId
+            const count = await tx.openOrder.count({ where: { tenantId: req.tenantId } });
+            const receiptId = 'OO-' + (count + 1);
+
+            // Create open order
+            order = await tx.openOrder.create({
+                data: {
+                    tenantId: req.tenantId,
+                    storeId,
+                    customerId: customerId || null,
+                    receiptId,
+                    items,
+                    totalAmount,
+                    paidAmount: 0,
+                    payments: [],
+                    status: 'open',
+                    notes: notes || null,
+                    cashier: req.user.username,
+                    createdAt: new Date()
+                }
+            });
+
+            // Authoritative inventory deduction
+            await inventoryMutationService.recordSale(tx, {
                 tenantId: req.tenantId,
                 storeId,
-                customerId: customerId || null,
-                receiptId,
+                saleId: order.id,
                 items,
-                totalAmount,
-                paidAmount: 0,
-                payments: [],
-                status: 'open',
-                notes: notes || null,
-                cashier: req.user.username,
-                createdAt: new Date()
+                performedBy: req.user.username,
+                notes: `Open Order - ${receiptId}`
+            });
+
+            // Customer ledger & balance
+            if (customerId) {
+                const customer = await tx.customer.findFirst({
+                    where: { id: customerId, tenantId: req.tenantId }
+                });
+                if (customer) {
+                    await tx.customer.update({
+                        where: { id: customer.id },
+                        data: { balance: customer.balance + totalAmount }
+                    });
+                    await tx.ledgerTransaction.create({
+                        data: {
+                            tenantId: req.tenantId,
+                            entityType: 'customer',
+                            entityId: customer.id,
+                            type: 'open_order',
+                            amount: totalAmount,
+                            referenceId: order.id,
+                            date: new Date(),
+                            cashier: req.user.username,
+                            notes: 'Open Order - ' + receiptId
+                        }
+                    });
+                }
             }
         });
 
-        // Deduct stock for each item
-        for (const item of items) {
-            await updateProductStock(
-                req.tenantId,
-                item.productId || null,
-                item.barcode || item.code || null,
-                -parseInt(item.qty || 1),
-                storeId,
-                item.variantId || null
-            );
-        }
-
-        // Customer ledger & balance
-        if (customerId) {
-            const customer = await prisma.customer.findFirst({
-                where: { id: customerId, tenantId: req.tenantId }
-            });
-            if (customer) {
-                await prisma.customer.update({
-                    where: { id: customer.id },
-                    data: { balance: customer.balance + totalAmount }
-                });
-                await prisma.ledgerTransaction.create({
-                    data: {
-                        tenantId: req.tenantId,
-                        entityType: 'customer',
-                        entityId: customer.id,
-                        type: 'open_order',
-                        amount: totalAmount,
-                        referenceId: order.id,
-                        date: new Date(),
-                        cashier: req.user.username,
-                        notes: 'Open Order - ' + receiptId
-                    }
-                });
-            }
-        }
-
         res.json(order);
     } catch (err) {
+        if (err.statusCode === 423 || err.code === 'STORE_LOCKED_FOR_RECONCILIATION') {
+            return res.status(423).json({ msg: err.message, code: err.code });
+        }
         console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(err.statusCode || 500).json({ msg: err.message || 'Server Error' });
     }
 });
 
@@ -347,58 +303,64 @@ router.post('/:id/add-items', auth, async (req, res) => {
         const currentItems = Array.isArray(order.items) ? [...order.items] : [];
         const newItems = [...currentItems, ...items];
 
-        // Deduct stock for new items
-        for (const item of items) {
-            await updateProductStock(
-                req.tenantId,
-                item.productId || null,
-                item.barcode || item.code || null,
-                -parseInt(item.qty || 1),
-                order.storeId,
-                item.variantId || null
-            );
-        }
-
         const newTotal = order.totalAmount + addedAmount;
+        let updatedOrder = null;
 
-        const updatedOrder = await prisma.openOrder.update({
-            where: { id: order.id },
-            data: {
-                items: newItems,
-                totalAmount: newTotal
+        await prisma.$transaction(async (tx) => {
+            await acquireStoreInventoryLock(tx, order.storeId);
+
+            // Deduct stock for new items via centralized service
+            await inventoryMutationService.recordSale(tx, {
+                tenantId: req.tenantId,
+                storeId: order.storeId,
+                saleId: `${order.id}-ADD-${Date.now()}`,
+                items,
+                performedBy: req.user.username,
+                notes: `Items added to Open Order - ${order.receiptId}`
+            });
+
+            updatedOrder = await tx.openOrder.update({
+                where: { id: order.id },
+                data: {
+                    items: newItems,
+                    totalAmount: newTotal
+                }
+            });
+
+            // Update customer balance if applicable
+            if (order.customerId) {
+                const customer = await tx.customer.findFirst({
+                    where: { id: order.customerId, tenantId: req.tenantId }
+                });
+                if (customer) {
+                    await tx.customer.update({
+                        where: { id: customer.id },
+                        data: { balance: customer.balance + addedAmount }
+                    });
+                    await tx.ledgerTransaction.create({
+                        data: {
+                            tenantId: req.tenantId,
+                            entityType: 'customer',
+                            entityId: customer.id,
+                            type: 'open_order',
+                            amount: addedAmount,
+                            referenceId: order.id,
+                            date: new Date(),
+                            cashier: req.user.username,
+                            notes: 'Items added to Open Order - ' + order.receiptId
+                        }
+                    });
+                }
             }
         });
 
-        // Update customer balance if applicable
-        if (order.customerId) {
-            const customer = await prisma.customer.findFirst({
-                where: { id: order.customerId, tenantId: req.tenantId }
-            });
-            if (customer) {
-                await prisma.customer.update({
-                    where: { id: customer.id },
-                    data: { balance: customer.balance + addedAmount }
-                });
-                await prisma.ledgerTransaction.create({
-                    data: {
-                        tenantId: req.tenantId,
-                        entityType: 'customer',
-                        entityId: customer.id,
-                        type: 'open_order',
-                        amount: addedAmount,
-                        referenceId: order.id,
-                        date: new Date(),
-                        cashier: req.user.username,
-                        notes: 'Items added to Open Order - ' + order.receiptId
-                    }
-                });
-            }
-        }
-
         res.json(updatedOrder);
     } catch (err) {
+        if (err.statusCode === 423 || err.code === 'STORE_LOCKED_FOR_RECONCILIATION') {
+            return res.status(423).json({ msg: err.message, code: err.code });
+        }
         console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(err.statusCode || 500).json({ msg: err.message || 'Server Error' });
     }
 });
 
@@ -437,55 +399,70 @@ router.delete('/:id/items/:productCode', auth, async (req, res) => {
         const removedAmount = parseFloat(removedItem.price) * parseInt(removedItem.qty || 1);
         const newItems = currentItems.filter((_, idx) => idx !== itemIdx);
         const newTotal = order.totalAmount - removedAmount;
+        let updatedOrder = null;
 
-        // Restore stock
-        await updateProductStock(
-            req.tenantId,
-            removedItem.productId || null,
-            removedItem.barcode || removedItem.code || null,
-            parseInt(removedItem.qty || 1),
-            order.storeId,
-            removedItem.variantId || null
-        );
+        await prisma.$transaction(async (tx) => {
+            await acquireStoreInventoryLock(tx, order.storeId);
 
-        const updatedOrder = await prisma.openOrder.update({
-            where: { id: order.id },
-            data: {
-                items: newItems,
-                totalAmount: newTotal
+            // Restore stock via centralized service
+            await inventoryMutationService.recordReturn(tx, {
+                tenantId: req.tenantId,
+                storeId: order.storeId,
+                returnId: `${order.id}-REM-${Date.now()}`,
+                saleId: order.id,
+                items: [{
+                    productId: removedItem.productId || null,
+                    barcode: removedItem.barcode || removedItem.code || null,
+                    code: removedItem.code || null,
+                    qty: parseInt(removedItem.qty || 1),
+                    variantId: removedItem.variantId || null
+                }],
+                performedBy: req.user.username,
+                notes: `Item removed from Open Order - ${order.receiptId}`
+            });
+
+            updatedOrder = await tx.openOrder.update({
+                where: { id: order.id },
+                data: {
+                    items: newItems,
+                    totalAmount: newTotal
+                }
+            });
+
+            // Reverse customer balance if applicable
+            if (order.customerId) {
+                const customer = await tx.customer.findFirst({
+                    where: { id: order.customerId, tenantId: req.tenantId }
+                });
+                if (customer) {
+                    await tx.customer.update({
+                        where: { id: customer.id },
+                        data: { balance: customer.balance - removedAmount }
+                    });
+                    await tx.ledgerTransaction.create({
+                        data: {
+                            tenantId: req.tenantId,
+                            entityType: 'customer',
+                            entityId: customer.id,
+                            type: 'open_order_adjustment',
+                            amount: -removedAmount,
+                            referenceId: order.id,
+                            date: new Date(),
+                            cashier: req.user.username,
+                            notes: 'Item removed from Open Order - ' + order.receiptId
+                        }
+                    });
+                }
             }
         });
 
-        // Reverse customer balance if applicable
-        if (order.customerId) {
-            const customer = await prisma.customer.findFirst({
-                where: { id: order.customerId, tenantId: req.tenantId }
-            });
-            if (customer) {
-                await prisma.customer.update({
-                    where: { id: customer.id },
-                    data: { balance: customer.balance - removedAmount }
-                });
-                await prisma.ledgerTransaction.create({
-                    data: {
-                        tenantId: req.tenantId,
-                        entityType: 'customer',
-                        entityId: customer.id,
-                        type: 'open_order_adjustment',
-                        amount: -removedAmount,
-                        referenceId: order.id,
-                        date: new Date(),
-                        cashier: req.user.username,
-                        notes: 'Item removed from Open Order - ' + order.receiptId
-                    }
-                });
-            }
-        }
-
         res.json(updatedOrder);
     } catch (err) {
+        if (err.statusCode === 423 || err.code === 'STORE_LOCKED_FOR_RECONCILIATION') {
+            return res.status(423).json({ msg: err.message, code: err.code });
+        }
         console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(err.statusCode || 500).json({ msg: err.message || 'Server Error' });
     }
 });
 
@@ -502,57 +479,66 @@ router.post('/:id/cancel', auth, async (req, res) => {
             return res.status(400).json({ msg: `Order is already ${order.status}` });
         }
 
-        // Restore stock for each item
         const orderItems = Array.isArray(order.items) ? order.items : [];
-        for (const item of orderItems) {
-            await updateProductStock(
-                req.tenantId,
-                item.productId || null,
-                item.barcode || item.code || null,
-                parseInt(item.qty || 1),
-                order.storeId,
-                item.variantId || null
-            );
-        }
 
-        await prisma.openOrder.update({
-            where: { id: order.id },
-            data: { status: 'cancelled' }
-        });
+        await prisma.$transaction(async (tx) => {
+            await acquireStoreInventoryLock(tx, order.storeId);
 
-        // Reverse customer balance
-        if (order.customerId) {
-            const unpaidAmount = order.totalAmount - order.paidAmount;
-            if (unpaidAmount > 0) {
-                const customer = await prisma.customer.findFirst({
-                    where: { id: order.customerId, tenantId: req.tenantId }
+            // Restore stock for all items via centralized service
+            if (orderItems.length > 0) {
+                await inventoryMutationService.recordCancelSale(tx, {
+                    tenantId: req.tenantId,
+                    storeId: order.storeId,
+                    cancelId: `CANCEL_${order.id}`,
+                    saleId: order.id,
+                    items: orderItems,
+                    performedBy: req.user.username,
+                    notes: `Open Order Cancelled - ${order.receiptId}`
                 });
-                if (customer) {
-                    await prisma.customer.update({
-                        where: { id: customer.id },
-                        data: { balance: customer.balance - unpaidAmount }
+            }
+
+            await tx.openOrder.update({
+                where: { id: order.id },
+                data: { status: 'cancelled' }
+            });
+
+            // Reverse customer balance
+            if (order.customerId) {
+                const unpaidAmount = order.totalAmount - order.paidAmount;
+                if (unpaidAmount > 0) {
+                    const customer = await tx.customer.findFirst({
+                        where: { id: order.customerId, tenantId: req.tenantId }
                     });
-                    await prisma.ledgerTransaction.create({
-                        data: {
-                            tenantId: req.tenantId,
-                            entityType: 'customer',
-                            entityId: customer.id,
-                            type: 'open_order_cancel',
-                            amount: -unpaidAmount,
-                            referenceId: order.id,
-                            date: new Date(),
-                            cashier: req.user.username,
-                            notes: 'Open Order Cancelled - ' + order.receiptId
-                        }
-                    });
+                    if (customer) {
+                        await tx.customer.update({
+                            where: { id: customer.id },
+                            data: { balance: customer.balance - unpaidAmount }
+                        });
+                        await tx.ledgerTransaction.create({
+                            data: {
+                                tenantId: req.tenantId,
+                                entityType: 'customer',
+                                entityId: customer.id,
+                                type: 'open_order_cancel',
+                                amount: -unpaidAmount,
+                                referenceId: order.id,
+                                date: new Date(),
+                                cashier: req.user.username,
+                                notes: 'Open Order Cancelled - ' + order.receiptId
+                            }
+                        });
+                    }
                 }
             }
-        }
+        });
 
         res.json({ msg: 'Open order cancelled and stock restored' });
     } catch (err) {
+        if (err.statusCode === 423 || err.code === 'STORE_LOCKED_FOR_RECONCILIATION') {
+            return res.status(423).json({ msg: err.message, code: err.code });
+        }
         console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(err.statusCode || 500).json({ msg: err.message || 'Server Error' });
     }
 });
 
