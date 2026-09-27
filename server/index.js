@@ -29,6 +29,7 @@ async function startServer() {
         app.use('/api/open-orders', require('./routes/open-orders'));
         app.use('/api/stock-transfers', require('./routes/stock-transfers'));
         app.use('/api/reports', require('./routes/reports-extended'));
+        app.use('/api/reconciliation', require('./routes/reconciliation'));
 
         const PORT = process.env.PORT || 5000;
         app.listen(PORT, () => console.log(`Server started on port ${PORT} [v4-prisma]`));

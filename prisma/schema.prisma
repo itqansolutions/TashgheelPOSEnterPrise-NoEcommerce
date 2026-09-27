@@ -84,6 +84,9 @@ model Tenant {
   stockTransfers     StockTransfer[]
   ecommerceConfigs   EcommerceConfig[]
   onlineOrders       OnlineOrder[]
+  variantStocks      VariantStock[]
+  inventoryMovements InventoryMovement[]
+  openingReconciliationSessions OpeningReconciliationSession[]
 
   @@map("tenants")
 }
@@ -119,9 +122,14 @@ model Store {
   name      String
   location  String?
   phone     String?
+  isReconciling          Boolean  @default(false)
+  activeReconciliationId String?
   createdAt DateTime @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  variantStocks          VariantStock[]
+  inventoryMovements     InventoryMovement[]
+  reconciliationSessions OpeningReconciliationSession[]
 
   @@index([tenantId])
   @@map("stores")
@@ -155,6 +163,9 @@ model Product {
   createdAt     DateTime @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  variantStocks              VariantStock[]
+  inventoryMovements         InventoryMovement[]
+  openingReconciliationItems OpeningReconciliationItem[]
 
   @@index([tenantId])
   @@index([tenantId, barcode])
@@ -546,4 +557,116 @@ model StockTransfer {
   @@index([tenantId])
   @@map("stock_transfers")
 }
+
+// ─────────────────────────────────────────────
+// VARIANT STOCK (Authoritative Variant x Store Inventory)
+// ─────────────────────────────────────────────
+model VariantStock {
+  id        String   @id @default(uuid())
+  tenantId  String
+  productId String
+  variantId String?
+  storeId   String
+  quantity  Float    @default(0)
+  minStock  Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, storeId, productId])
+  @@index([tenantId, storeId])
+  @@index([tenantId, productId])
+  @@index([tenantId, variantId])
+  @@map("variant_stocks")
+}
+
+// ─────────────────────────────────────────────
+// INVENTORY MOVEMENT (Immutable Audit Ledger)
+// ─────────────────────────────────────────────
+model InventoryMovement {
+  id             String   @id @default(uuid())
+  tenantId       String
+  storeId        String
+  productId      String
+  variantId      String?
+  type           String
+  quantityDelta  Float
+  quantityBefore Float
+  quantityAfter  Float
+  referenceType  String?
+  referenceId    String?
+  batchId        String?
+  isReversal     Boolean  @default(false)
+  reversalOfId   String?
+  notes          String?
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, storeId, createdAt])
+  @@index([tenantId, productId, variantId])
+  @@index([referenceType, referenceId])
+  @@index([batchId])
+  @@map("inventory_movements")
+}
+
+// ─────────────────────────────────────────────
+// OPENING RECONCILIATION SESSION
+// ─────────────────────────────────────────────
+model OpeningReconciliationSession {
+  id                 String    @id @default(uuid())
+  tenantId           String
+  storeId            String
+  status             String    @default("IN_PROGRESS") // IN_PROGRESS | READY_FOR_REVIEW | APPROVING | APPROVED | CANCELLED
+  batchId            String?   @unique
+  initiatedById      String
+  approvedById       String?
+  startedAt          DateTime  @default(now())
+  submittedAt        DateTime?
+  approvingStartedAt DateTime?
+  approvedAt         DateTime?
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store  Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  items OpeningReconciliationItem[]
+
+  @@index([tenantId, storeId, status])
+  @@map("opening_reconciliation_sessions")
+}
+
+// ─────────────────────────────────────────────
+// OPENING RECONCILIATION ITEM
+// ─────────────────────────────────────────────
+model OpeningReconciliationItem {
+  id                String   @id @default(uuid())
+  sessionId         String
+  productId         String
+  variantId         String?
+  legacyQtySnapshot Float    @default(0)
+  physicalCount     Float    @default(0)
+  variance          Float    @default(0)
+  costPrice         Float    @default(0)
+  exceptionFlag     String   @default("NONE") // NONE | NEGATIVE_LEGACY_STOCK
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  session OpeningReconciliationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  product Product                      @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([productId, variantId])
+  @@map("opening_reconciliation_items")
+}
+
 

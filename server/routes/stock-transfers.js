@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const prisma = require('../prisma');
+const { acquireMultiStoreInventoryLocks } = require('../services/inventoryLock.service');
 
 // ================= STOCK TRANSFERS =================
 
@@ -17,6 +18,10 @@ router.post('/', auth, async (req, res) => {
         if (fromStoreId === toStoreId) {
             return res.status(400).json({ msg: 'Source and destination stores must be different' });
         }
+
+        // Lock both stores in deterministic ascending order and verify neither is reconciling
+        await acquireMultiStoreInventoryLocks(prisma, [fromStoreId, toStoreId]);
+
         if (!items || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ msg: 'At least one item is required' });
         }
@@ -123,6 +128,9 @@ router.get('/', auth, async (req, res) => {
         });
         res.json(transfers);
     } catch (err) {
+        if (err.statusCode === 423 || err.code === 'STORE_LOCKED_FOR_RECONCILIATION') {
+            return res.status(423).json({ msg: err.message, code: err.code });
+        }
         console.error(err.message);
         res.status(500).send('Server Error');
     }

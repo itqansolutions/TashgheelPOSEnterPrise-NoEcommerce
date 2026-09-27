@@ -3,6 +3,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
 const prisma = require('../prisma');
+const { acquireStoreInventoryLock } = require('../services/inventoryLock.service');
 
 // ================= STORES (WAREHOUSES) =================
 
@@ -474,6 +475,9 @@ router.post('/sales', auth, async (req, res) => {
         const receiptId = String(shiftCount + 1);
 
         const effectiveStoreId = req.body.storeId || shift.storeId;
+        if (effectiveStoreId) {
+            await acquireStoreInventoryLock(prisma, effectiveStoreId);
+        }
 
         const sale = await prisma.sale.create({
             data: {
@@ -554,6 +558,9 @@ router.post('/sales', auth, async (req, res) => {
             } : {}
         });
     } catch (err) {
+        if (err.statusCode === 423 || err.code === 'STORE_LOCKED_FOR_RECONCILIATION') {
+            return res.status(423).json({ msg: err.message, code: err.code });
+        }
         console.error(err.message);
         res.status(500).send('Server Error');
     }
@@ -633,6 +640,10 @@ router.post('/sales/:id/return', auth, async (req, res) => {
         }
         if (!sale) return res.status(404).json({ msg: 'Sale not found' });
 
+        if (sale.storeId) {
+            await acquireStoreInventoryLock(prisma, sale.storeId);
+        }
+
         const saleItems = Array.isArray(sale.items) ? sale.items : [];
         const returnRecord = {
             items: [],
@@ -703,6 +714,9 @@ router.post('/sales/:id/return', auth, async (req, res) => {
             res.status(400).json({ msg: 'No valid items to return' });
         }
     } catch (err) {
+        if (err.statusCode === 423 || err.code === 'STORE_LOCKED_FOR_RECONCILIATION') {
+            return res.status(423).json({ msg: err.message, code: err.code });
+        }
         console.error(err.message);
         res.status(500).send('Server Error');
     }
@@ -715,6 +729,10 @@ router.post('/sales/:id/cancel', auth, async (req, res) => {
             where: { id: req.params.id, tenantId: req.tenantId }
         });
         if (!sale) return res.status(404).json({ msg: 'Sale not found' });
+
+        if (sale.storeId) {
+            await acquireStoreInventoryLock(prisma, sale.storeId);
+        }
 
         if (sale.status === 'cancelled') {
             return res.status(400).json({ msg: 'Sale already cancelled' });
@@ -753,6 +771,9 @@ router.post('/sales/:id/cancel', auth, async (req, res) => {
 
         res.json({ msg: 'Sale cancelled and stock restored' });
     } catch (err) {
+        if (err.statusCode === 423 || err.code === 'STORE_LOCKED_FOR_RECONCILIATION') {
+            return res.status(423).json({ msg: err.message, code: err.code });
+        }
         console.error(err.message);
         res.status(500).send('Server Error');
     }
@@ -1066,6 +1087,7 @@ router.post('/inventory/adjust', auth, async (req, res) => {
     try {
         const { items, storeId } = req.body;
         if (!storeId) return res.status(400).json({ msg: 'Store is required for stock adjustment' });
+        await acquireStoreInventoryLock(prisma, storeId);
 
         const adjustmentItems = [];
 
@@ -1119,6 +1141,9 @@ router.post('/inventory/adjust', auth, async (req, res) => {
             res.json({ msg: 'No changes made' });
         }
     } catch (err) {
+        if (err.statusCode === 423 || err.code === 'STORE_LOCKED_FOR_RECONCILIATION') {
+            return res.status(423).json({ msg: err.message, code: err.code });
+        }
         console.error(err.message);
         res.status(500).send('Server Error');
     }
@@ -1500,7 +1525,11 @@ router.post('/suppliers/:id/pay', auth, async (req, res) => {
 // @route   POST /api/purchases
 router.post('/purchases', auth, async (req, res) => {
     try {
-        const { supplierId, items, total, cashPaid } = req.body;
+        const { supplierId, items, total, cashPaid, storeId } = req.body;
+
+        if (storeId) {
+            await acquireStoreInventoryLock(prisma, storeId);
+        }
 
         const supplier = await prisma.supplier.findFirst({
             where: { id: supplierId, tenantId: req.tenantId }
@@ -1595,6 +1624,9 @@ router.post('/purchases', auth, async (req, res) => {
         const updatedSupplier = await prisma.supplier.findUnique({ where: { id: supplier.id } });
         res.json({ purchase, supplierBalance: updatedSupplier.balance });
     } catch (err) {
+        if (err.statusCode === 423 || err.code === 'STORE_LOCKED_FOR_RECONCILIATION') {
+            return res.status(423).json({ msg: err.message, code: err.code });
+        }
         console.error(err.message);
         res.status(500).send('Server Error');
     }
