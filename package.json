@@ -4,7 +4,7 @@
     "description": "Tashgheel Online POS",
     "main": "server/index.js",
     "scripts": {
-        "start": "prisma db push --accept-data-loss && node server/index.js",
+        "start": "prisma migrate deploy && node server/index.js",
         "dev": "nodemon server/index.js",
         "postinstall": "prisma generate",
         "db:generate": "prisma generate",
