@@ -396,7 +396,7 @@ router.delete('/products/:id', auth, async (req, res) => {
 // ================= SALES =================
 
 // Helper to update product stock
-async function updateProductStock(tenantId, productId, barcode, qtyChange, storeId) {
+async function updateProductStock(tenantId, productId, barcode, qtyChange, storeId, variantId = null) {
     let product = null;
     if (productId) {
         product = await prisma.product.findFirst({ where: { id: productId, tenantId } });
@@ -405,23 +405,32 @@ async function updateProductStock(tenantId, productId, barcode, qtyChange, store
     if (!product && barcode) {
         product = await prisma.product.findFirst({ where: { barcode, tenantId } });
     }
-    
-    // If still not found, we might need to search JSON array (PostgreSQL raw query or fetching all products with variants).
-    // But usually frontend sends productId from the cart, so it should be found above.
+    // Backward compatibility: If still not found, check variants JSON
+    if (!product && (variantId || barcode)) {
+        const candidateProducts = await prisma.product.findMany({
+            where: { tenantId, hasVariants: true }
+        });
+        product = candidateProducts.find(p => 
+            Array.isArray(p.variants) && p.variants.some(v => 
+                (variantId && v.id === variantId) ||
+                (barcode && (v.barcode === barcode || v.sku === barcode))
+            )
+        ) || null;
+    }
 
     if (product && product.trackStock !== false) {
-        let newStock = product.stock;
+        let newStock = product.stock + qtyChange;
         let variants = Array.isArray(product.variants) ? product.variants : [];
 
-        if (product.hasVariants && barcode) {
-            // Deduct from variant stock
-            const vIndex = variants.findIndex(v => v.barcode === barcode || v.sku === barcode);
+        if (product.hasVariants && (variantId || barcode)) {
+            // Update variant stock if variant matched
+            const vIndex = variants.findIndex(v => 
+                (variantId && v.id === variantId) ||
+                (barcode && (v.barcode === barcode || v.sku === barcode))
+            );
             if (vIndex >= 0) {
                 variants[vIndex].stock = (variants[vIndex].stock || 0) + qtyChange;
             }
-        } else {
-            // Deduct from main stock
-            newStock = product.stock + qtyChange;
         }
 
         const stores = Array.isArray(product.stores) ? product.stores : [];
@@ -523,9 +532,10 @@ router.post('/sales', auth, async (req, res) => {
             await updateProductStock(
                 req.tenantId,
                 item.productId || null,
-                item.code || null,
+                item.barcode || item.code || null,
                 -item.qty,
-                effectiveStoreId
+                effectiveStoreId,
+                item.variantId || null
             );
         }
 
@@ -632,7 +642,12 @@ router.post('/sales/:id/return', auth, async (req, res) => {
         };
 
         for (const returnItem of items) {
-            const saleItem = saleItems.find(i => i.code === returnItem.code || i._id === returnItem.code);
+            const saleItem = saleItems.find(i => 
+                (returnItem.variantId && i.variantId === returnItem.variantId) ||
+                i.code === returnItem.code || 
+                i._id === returnItem.code ||
+                (returnItem.code && (i.variantId === returnItem.code || i.barcode === returnItem.code || i.sku === returnItem.code))
+            );
             if (!saleItem) continue;
 
             const remainingQty = saleItem.qty - (saleItem.returnedQty || 0);
@@ -664,9 +679,10 @@ router.post('/sales/:id/return', auth, async (req, res) => {
             await updateProductStock(
                 req.tenantId,
                 saleItem.productId || null,
-                saleItem.code || null,
+                saleItem.barcode || saleItem.code || null,
                 returnItem.qty,
-                sale.storeId
+                sale.storeId,
+                saleItem.variantId || null
             );
         }
 
@@ -710,9 +726,10 @@ router.post('/sales/:id/cancel', auth, async (req, res) => {
             await updateProductStock(
                 req.tenantId,
                 item.productId || null,
-                item.code || null,
+                item.barcode || item.code || null,
                 item.qty,
-                sale.storeId
+                sale.storeId,
+                item.variantId || null
             );
         }
 

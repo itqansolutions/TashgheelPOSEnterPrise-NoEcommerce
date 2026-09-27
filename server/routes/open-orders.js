@@ -7,7 +7,7 @@ const prisma = require('../prisma');
 // ================= OPEN ORDERS =================
 
 // Helper: update product stock (same logic as sales route)
-async function updateProductStock(tenantId, productId, barcode, qtyChange, storeId) {
+async function updateProductStock(tenantId, productId, barcode, qtyChange, storeId, variantId = null) {
     let product = null;
     if (productId) {
         product = await prisma.product.findFirst({ where: { id: productId, tenantId } });
@@ -15,18 +15,30 @@ async function updateProductStock(tenantId, productId, barcode, qtyChange, store
     if (!product && barcode) {
         product = await prisma.product.findFirst({ where: { barcode, tenantId } });
     }
+    if (!product && (variantId || barcode)) {
+        const candidateProducts = await prisma.product.findMany({
+            where: { tenantId, hasVariants: true }
+        });
+        product = candidateProducts.find(p => 
+            Array.isArray(p.variants) && p.variants.some(v => 
+                (variantId && v.id === variantId) ||
+                (barcode && (v.barcode === barcode || v.sku === barcode))
+            )
+        ) || null;
+    }
 
     if (product && product.trackStock !== false) {
-        let newStock = product.stock;
+        let newStock = product.stock + qtyChange;
         let variants = Array.isArray(product.variants) ? product.variants : [];
 
-        if (product.hasVariants && barcode) {
-            const vIndex = variants.findIndex(v => v.barcode === barcode || v.sku === barcode);
+        if (product.hasVariants && (variantId || barcode)) {
+            const vIndex = variants.findIndex(v => 
+                (variantId && v.id === variantId) ||
+                (barcode && (v.barcode === barcode || v.sku === barcode))
+            );
             if (vIndex >= 0) {
                 variants[vIndex].stock = (variants[vIndex].stock || 0) + qtyChange;
             }
-        } else {
-            newStock = product.stock + qtyChange;
         }
 
         const stores = Array.isArray(product.stores) ? product.stores : [];
@@ -94,9 +106,10 @@ router.post('/', auth, async (req, res) => {
             await updateProductStock(
                 req.tenantId,
                 item.productId || null,
-                item.code || null,
+                item.barcode || item.code || null,
                 -parseInt(item.qty || 1),
-                storeId
+                storeId,
+                item.variantId || null
             );
         }
 
@@ -339,9 +352,10 @@ router.post('/:id/add-items', auth, async (req, res) => {
             await updateProductStock(
                 req.tenantId,
                 item.productId || null,
-                item.code || null,
+                item.barcode || item.code || null,
                 -parseInt(item.qty || 1),
-                order.storeId
+                order.storeId,
+                item.variantId || null
             );
         }
 
@@ -428,9 +442,10 @@ router.delete('/:id/items/:productCode', auth, async (req, res) => {
         await updateProductStock(
             req.tenantId,
             removedItem.productId || null,
-            removedItem.code || null,
+            removedItem.barcode || removedItem.code || null,
             parseInt(removedItem.qty || 1),
-            order.storeId
+            order.storeId,
+            removedItem.variantId || null
         );
 
         const updatedOrder = await prisma.openOrder.update({
@@ -493,9 +508,10 @@ router.post('/:id/cancel', auth, async (req, res) => {
             await updateProductStock(
                 req.tenantId,
                 item.productId || null,
-                item.code || null,
+                item.barcode || item.code || null,
                 parseInt(item.qty || 1),
-                order.storeId
+                order.storeId,
+                item.variantId || null
             );
         }
 

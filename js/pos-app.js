@@ -539,6 +539,19 @@ function bindSearchOnce() {
   const el = document.getElementById("productSearch");
   if (el && !el.dataset.bound) {
     el.addEventListener("input", handleSearch);
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const code = el.value.trim();
+        if (code) {
+          const handled = searchProductByBarcode(code);
+          if (handled) {
+            el.value = "";
+            handleSearch();
+          }
+        }
+      }
+    });
     el.dataset.bound = "1";
   }
 }
@@ -575,6 +588,8 @@ async function loadProducts() {
     allProducts = products.filter(p => p.active !== false); // Filter only active products
     filteredProducts = allProducts;
     renderProducts();
+    bindSearchOnce();
+    ensureSearchClickable();
 
     if (products.length === 0) {
       console.warn('No products found in database');
@@ -611,6 +626,16 @@ function renderProducts() {
         currentStock = storeStock ? storeStock.stock : 0;
     }
 
+    const hasVariants = product.hasVariants && Array.isArray(product.variants) && product.variants.length > 0;
+
+    let priceDisplay = `$${product.price.toFixed(2)}`;
+    if (hasVariants) {
+      const prices = product.variants.map(v => (v.price !== undefined && v.price !== null && !isNaN(parseFloat(v.price))) ? parseFloat(v.price) : product.price);
+      const minP = Math.min(...prices);
+      const maxP = Math.max(...prices);
+      priceDisplay = minP === maxP ? `$${minP.toFixed(2)}` : `$${minP.toFixed(2)} - $${maxP.toFixed(2)}`;
+    }
+
     const div = document.createElement("div");
     div.className = "product-card";
     if (product.trackStock !== false && currentStock <= 0) div.classList.add("out-of-stock");
@@ -624,18 +649,25 @@ function renderProducts() {
       ? `<img src="${product.imageUrl}" alt="${product.name}">`
       : `<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 text-slate-400 text-3xl"><i class="fas fa-box text-xl opacity-40"></i></div>`;
 
+    const variantBadge = hasVariants 
+      ? `<span class="variant-pill text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 ml-1 inline-block">${product.variants.length} ${t('options', 'خيارات')}</span>`
+      : '';
+
     div.innerHTML = `
       <div class="image-wrapper">
         ${imageHtml}
       </div>
       <div class="info">
-        <span class="category">${product.category || (lang === 'ar' ? 'عام' : 'General')}</span>
+        <div class="flex items-center justify-between">
+          <span class="category">${product.category || (lang === 'ar' ? 'عام' : 'General')}</span>
+          ${variantBadge}
+        </div>
         <h4 class="title">${product.name}</h4>
         <div class="flex justify-between items-center mt-auto">
-          <p class="price">$${product.price.toFixed(2)}</p>
+          <p class="price">${priceDisplay}</p>
           <span class="stock text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100">${stockDisplay}</span>
         </div>
-        <button class="add-btn mt-2">${t('Add to Cart', 'إضافة للسلة')}</button>
+        <button class="add-btn mt-2">${hasVariants ? t('Select Option', 'اختر خيار') : t('Add to Cart', 'إضافة للسلة')}</button>
       </div>
     `;
     grid.appendChild(div);
@@ -644,20 +676,65 @@ function renderProducts() {
 
 function handleSearch() {
   const query = document.getElementById("productSearch")?.value?.trim().toLowerCase() || "";
-  filteredProducts = allProducts.filter(p =>
-    (p.name && p.name.toLowerCase().includes(query)) ||
-    (p.code && String(p.code).toLowerCase().includes(query)) ||
-    (p.barcode && String(p.barcode).toLowerCase().includes(query))
-  );
+  if (!query) {
+    filteredProducts = allProducts;
+  } else {
+    filteredProducts = allProducts.filter(p => {
+      const matchName = p.name && p.name.toLowerCase().includes(query);
+      const matchCode = p.code && String(p.code).toLowerCase().includes(query);
+      const matchBarcode = p.barcode && String(p.barcode).toLowerCase().includes(query);
+      const matchVariants = p.hasVariants && Array.isArray(p.variants) && p.variants.some(v => 
+        (v.barcode && String(v.barcode).toLowerCase().includes(query)) ||
+        (v.sku && String(v.sku).toLowerCase().includes(query)) ||
+        (v.attributes && Object.values(v.attributes).some(attr => String(attr).toLowerCase().includes(query)))
+      );
+      return matchName || matchCode || matchBarcode || matchVariants;
+    });
+  }
   renderProducts();
 }
 
 function searchProductByBarcode(barcode) {
-  const found = allProducts.find(p => p.barcode === barcode);
-  if (found) {
-    addToCart(found);
+  if (!barcode) return false;
+  const cleanCode = String(barcode).trim();
+  if (!cleanCode) return false;
+
+  // 1. Tier 1: Exact Variant Barcode
+  for (const product of allProducts) {
+    if (product.hasVariants && Array.isArray(product.variants)) {
+      const matchedVariant = product.variants.find(v => v.barcode && String(v.barcode).trim() === cleanCode);
+      if (matchedVariant) {
+        selectVariant(product.id, matchedVariant.id || matchedVariant.sku || matchedVariant.barcode);
+        return true;
+      }
+    }
+  }
+
+  // 2. Tier 2: Exact Variant SKU
+  for (const product of allProducts) {
+    if (product.hasVariants && Array.isArray(product.variants)) {
+      const matchedVariant = product.variants.find(v => v.sku && String(v.sku).trim().toLowerCase() === cleanCode.toLowerCase());
+      if (matchedVariant) {
+        selectVariant(product.id, matchedVariant.id || matchedVariant.sku || matchedVariant.barcode);
+        return true;
+      }
+    }
+  }
+
+  // 3. Tier 3: Exact Product Barcode
+  const productByBarcode = allProducts.find(p => p.barcode && String(p.barcode).trim() === cleanCode);
+  if (productByBarcode) {
+    addToCart(productByBarcode);
     return true;
   }
+
+  // 4. Tier 4: Product Code / SKU
+  const productByCode = allProducts.find(p => p.code && String(p.code).trim().toLowerCase() === cleanCode.toLowerCase());
+  if (productByCode) {
+    addToCart(productByCode);
+    return true;
+  }
+
   return false;
 }
 
@@ -712,23 +789,36 @@ window.closeVariantModal = function() {
     document.getElementById('variantModal').style.display = 'none';
 };
 
-window.selectVariant = function(productId, variantSku) {
+window.selectVariant = function(productId, variantIdentifier) {
     const product = allProducts.find(p => p.id === productId);
     if (!product) return;
-    const variant = product.variants.find(v => v.sku === variantSku || v.barcode === variantSku);
+    const variant = Array.isArray(product.variants)
+      ? product.variants.find(v => v.id === variantIdentifier || v.sku === variantIdentifier || v.barcode === variantIdentifier)
+      : null;
     if (!variant) return;
 
     closeVariantModal();
 
+    const variantIdStr = variant.id || variant.sku || variant.barcode;
+    const cartKey = `${product.id}_${variantIdStr}`;
+    const variantTitle = variant.attributes ? Object.values(variant.attributes).join(' / ') : (variant.sku || 'Variant');
+
     const variantProduct = {
         ...product,
-        _id: variant.id, // Treat variant as unique cart item
-        productId: product.id, // Keep reference to main product
-        name: `${product.name} - ${Object.values(variant.attributes).join(' / ')}`,
-        price: variant.price || product.price,
+        cartKey: cartKey,
+        _id: variant.id,
+        id: product.id,
+        productId: product.id,
+        variantId: variant.id || null,
+        variantTitle: variantTitle,
+        variantAttributes: variant.attributes || null,
+        sku: variant.sku || null,
+        barcode: variant.barcode || product.barcode || null,
         code: variant.barcode || variant.sku || product.code,
-        barcode: variant.barcode || variant.sku || product.barcode,
-        stock: variant.stock,
+        name: `${product.name} - ${variantTitle}`,
+        price: (variant.price !== undefined && variant.price !== null && !isNaN(parseFloat(variant.price))) ? parseFloat(variant.price) : product.price,
+        cost: (variant.cost !== undefined && variant.cost !== null && !isNaN(parseFloat(variant.cost))) ? parseFloat(variant.cost) : (product.cost || 0),
+        stock: (variant.stock !== undefined && variant.stock !== null) ? variant.stock : product.stock,
         trackStock: product.trackStock
     };
 
@@ -753,14 +843,17 @@ function addToCart(product) {
       product.variants.forEach(v => {
           const btn = document.createElement('button');
           btn.className = 'w-full text-left p-4 rounded-xl border border-gray-200 hover:border-brand-blue hover:bg-blue-50 transition-all font-bold';
+          const attrText = v.attributes ? Object.values(v.attributes).join(' / ') : (v.sku || 'Option');
+          const vPrice = (v.price !== undefined && v.price !== null && !isNaN(parseFloat(v.price))) ? parseFloat(v.price) : product.price;
+          const vStock = (v.stock !== undefined && v.stock !== null) ? v.stock : (product.currentStock ?? product.stock ?? 0);
           btn.innerHTML = `
             <div class="flex justify-between items-center">
-                <span>${Object.values(v.attributes).join(' / ')}</span>
-                <span class="text-brand-blue">${(v.price || product.price).toFixed(2)}</span>
+                <span>${attrText}</span>
+                <span class="text-brand-blue">${vPrice.toFixed(2)}</span>
             </div>
-            <div class="text-xs text-gray-500 font-normal mt-1">${t('Stock:', 'المخزون:')} ${v.stock} | ${t('Barcode:', 'الباركود:')} ${v.barcode || v.sku}</div>
+            <div class="text-xs text-gray-500 font-normal mt-1">${t('Stock:', 'المخزون:')} ${vStock} | ${t('Barcode:', 'الباركود:')} ${v.barcode || v.sku || '-'}</div>
           `;
-          btn.onclick = () => selectVariant(product.id, v.sku || v.barcode);
+          btn.onclick = () => selectVariant(product.id, v.id || v.sku || v.barcode);
           options.appendChild(btn);
       });
       
@@ -768,30 +861,43 @@ function addToCart(product) {
       return;
   }
 
-  addToCartDirect(product);
+  // Standard product without variants
+  const standardProduct = {
+    ...product,
+    cartKey: product.cartKey || String(product.id),
+    productId: product.id,
+    variantId: null,
+    variantTitle: null,
+    variantAttributes: null,
+    stock: product.currentStock !== undefined ? product.currentStock : (product.stock || 0)
+  };
+  addToCartDirect(standardProduct);
 }
 
 function addToCartDirect(product) {
+  const itemKey = product.cartKey || (product.variantId ? `${product.productId || product.id}_${product.variantId}` : String(product.id));
+
   // Check stock (if tracked)
   if (product.trackStock !== false && product.stock <= 0) {
-    alert("Out of stock!");
+    const lang = localStorage.getItem('pos_language') || 'en';
+    alert(lang === 'ar' ? 'المنتج غير متوفر في المخزون!' : 'Out of stock!');
     return;
   }
 
-  const existingItem = cart.find(item => item.id === product.id);
+  const existingItem = cart.find(item => item.cartKey === itemKey);
 
   if (existingItem) {
     // Check stock for existing item (if tracked)
     if (product.trackStock !== false && existingItem.qty >= product.stock) {
-      alert("Not enough stock!");
+      const lang = localStorage.getItem('pos_language') || 'en';
+      alert(lang === 'ar' ? 'الكمية المطلوبة تتجاوز المخزون المتاح!' : 'Not enough stock!');
       return;
     }
     existingItem.qty++;
-  }
-
-  if (!existingItem) {
+  } else {
     cart.push({
       ...product,
+      cartKey: itemKey,
       basePrice: product.price,
       qty: 1,
       // Timer Properties
@@ -856,9 +962,12 @@ function updateCartSummary() {
     subtotal += item.price * item.qty;
     const div = document.createElement("div");
     div.className = "cart-item";
+    const variantBadge = item.variantTitle 
+      ? `<span class="variant-pill text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded px-1.5 py-0.5 ml-1 mr-1">${item.variantTitle}</span>` 
+      : '';
     div.innerHTML = `
       <div>
-        <strong>${item.name}</strong><br>
+        <strong>${item.name}</strong>${variantBadge}<br>
         <div style="display:flex;align-items:center;">
            <small>${item.price.toFixed(2)} x <span onclick="editCartItemQty(${index})" style="cursor:pointer;border-bottom:1px dashed #333;font-weight:bold;" title="Click to edit quantity">${item.qty.toFixed(2)}</span></small>
            
@@ -965,7 +1074,8 @@ function editCartItemQty(index) {
   const item = cart[index];
   if (!item) return;
 
-  const input = prompt(`Enter new quantity for ${item.name}:`, item.qty);
+  const displayName = item.variantTitle ? `${item.name} (${item.variantTitle})` : item.name;
+  const input = prompt(`Enter new quantity for ${displayName}:`, item.qty);
   if (input === null) return; // Cancelled
 
   const newQty = parseFloat(input);
@@ -976,7 +1086,7 @@ function editCartItemQty(index) {
   }
 
   // Check stock if tracked
-  if (item.trackStock !== false && newQty > item.stock) {
+  if (item.trackStock !== false && item.stock !== undefined && newQty > item.stock) {
     alert(`Not enough stock! Available: ${item.stock}`);
     return;
   }
@@ -1095,13 +1205,18 @@ async function processSale(method) {
 
   const saleData = {
     items: cart.map(item => ({
-      code: item.code,
+      productId: item.productId || item.id,
+      variantId: item.variantId || null,
+      variantTitle: item.variantTitle || null,
+      variantAttributes: item.variantAttributes || null,
+      sku: item.sku || null,
+      barcode: item.barcode || null,
+      code: item.barcode || item.code || item.sku,
       name: item.name,
       qty: item.qty,
       price: item.price,
-      cost: item.cost,
-      total: item.price * item.qty,
-      code: item.barcode
+      cost: item.cost || 0,
+      total: item.price * item.qty
     })),
     subtotal: subtotal,
     discount: window.cartDiscount,
@@ -1307,14 +1422,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Event Listeners
-  document.getElementById('productSearch')?.addEventListener('input', (e) => {
-    const term = e.target.value.toLowerCase();
-    filteredProducts = allProducts.filter(p =>
-      p.name.toLowerCase().includes(term) ||
-      (p.barcode && p.barcode.includes(term))
-    );
-    renderProducts(filteredProducts);
-  });
+  bindSearchOnce();
+  ensureSearchClickable();
 
   // Grid Zoom Slider
   document.getElementById('gridZoom')?.addEventListener('input', (e) => {
@@ -1635,10 +1744,13 @@ window.submitCloseShift = submitCloseShift;
 function scanBarcode() {
   const searchTerm = prompt("Scan or enter barcode:");
   if (searchTerm) {
-    const input = document.getElementById("productSearch");
-    if (input) {
-      input.value = searchTerm;
-      input.dispatchEvent(new Event('input'));
+    const trimmed = searchTerm.trim();
+    if (!searchProductByBarcode(trimmed)) {
+      const input = document.getElementById("productSearch");
+      if (input) {
+        input.value = trimmed;
+        input.dispatchEvent(new Event('input'));
+      }
     }
   }
 }
@@ -1731,18 +1843,27 @@ async function holdTransaction() {
     cashier,
     customerId,
     items: cart.map(item => ({
+      cartKey: item.cartKey,
+      productId: item.productId || item.id,
+      variantId: item.variantId || null,
+      variantTitle: item.variantTitle || null,
+      variantAttributes: item.variantAttributes || null,
+      sku: item.sku || null,
+      id: item.id,
       code: item.code,
       name: item.name,
       qty: item.qty,
       price: item.price,
-      cost: item.cost,
+      basePrice: item.basePrice || item.price,
+      cost: item.cost || 0,
       barcode: item.barcode || item.code,
+      stock: item.stock,
       trackStock: item.trackStock !== undefined ? item.trackStock : true,
       category: item.category,
       imageUrl: item.imageUrl,
       stores: item.stores || [],
       hasVariants: item.hasVariants || false,
-      variantName: item.variantName || null
+      variantName: item.variantName || item.variantTitle || null
     })),
     discount,
     salesman,
@@ -1856,20 +1977,24 @@ async function resumeHeldOrder(id) {
   const order = heldTransactions.find(o => o.id === id);
   if (!order) return;
 
-  cart = Array.isArray(order.items) ? order.items.map(item => ({
-    code: item.code,
-    name: item.name,
-    qty: item.qty,
-    price: item.price,
-    cost: item.cost,
-    barcode: item.barcode || item.code,
-    trackStock: item.trackStock !== undefined ? item.trackStock : true,
-    category: item.category,
-    imageUrl: item.imageUrl,
-    stores: item.stores || [],
-    hasVariants: item.hasVariants || false,
-    variantName: item.variantName || null
-  })) : [];
+  cart = Array.isArray(order.items) ? order.items.map(item => {
+    const fallbackKey = item.cartKey || (item.variantId ? `${item.productId || item.id}_${item.variantId}` : (item.productId || item.id || item.code || Math.random().toString(36).substr(2, 9)));
+    return {
+      ...item,
+      cartKey: fallbackKey,
+      productId: item.productId || item.id,
+      variantId: item.variantId || null,
+      variantTitle: item.variantTitle || item.variantName || null,
+      variantAttributes: item.variantAttributes || null,
+      sku: item.sku || null,
+      basePrice: item.basePrice || item.price,
+      barcode: item.barcode || item.code,
+      trackStock: item.trackStock !== undefined ? item.trackStock : true,
+      accumulatedTime: item.accumulatedTime || 0,
+      lastStartTime: null,
+      isRunning: false
+    };
+  }) : [];
 
   window.cart = cart;
 
@@ -1944,12 +2069,13 @@ async function createLayawayFromPOS() {
     storeId,
     notes,
     items: cart.map(item => ({
-      productId: item.id,
+      productId: item.productId || item.id,
+      variantId: item.variantId || null,
       code: item.barcode || item.code,
       name: item.name,
       qty: item.qty,
       price: item.price,
-      cost: item.cost
+      cost: item.cost || 0
     }))
   };
 
