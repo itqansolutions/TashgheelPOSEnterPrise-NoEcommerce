@@ -4,7 +4,7 @@
     "description": "Tashgheel Online POS",
     "main": "server/index.js",
     "scripts": {
-        "start": "prisma migrate deploy && node server/index.js",
+        "start": "node server/start.js",
         "dev": "nodemon server/index.js",
         "postinstall": "prisma generate",
         "db:generate": "prisma generate",
