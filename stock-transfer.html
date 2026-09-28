@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8">
@@ -68,22 +68,28 @@
             <!-- Warehouse Selectors -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div class="form-group" style="margin-bottom:0">
-                <label data-i18n="from_store">📤 From Warehouse</label>
+                <div class="flex items-center justify-between mb-1.5">
+                  <label data-i18n="from_store" style="margin:0;">📤 From Warehouse (المصدر)</label>
+                  <div id="from-store-status"></div>
+                </div>
                 <select id="fromStore">
                   <option value="" data-i18n="select_store">Select Warehouse</option>
                 </select>
               </div>
               <div class="form-group" style="margin-bottom:0">
-                <label data-i18n="to_store">📥 To Warehouse</label>
+                <div class="flex items-center justify-between mb-1.5">
+                  <label data-i18n="to_store" style="margin:0;">📥 To Warehouse (الوجهة)</label>
+                  <div id="to-store-status"></div>
+                </div>
                 <select id="toStore">
                   <option value="" data-i18n="select_store">Select Warehouse</option>
                 </select>
               </div>
             </div>
 
-            <!-- Product Search Autocomplete -->
-            <div class="form-group mb-6" style="position:relative">
-              <label data-i18n="add_items">Add Product</label>
+            <!-- Product Search Autocomplete & Selection -->
+            <div class="form-group mb-4" style="position:relative">
+              <label data-i18n="add_items">Add Product / إضافة منتج للتحويل</label>
               <input type="text" id="productSearch" class="search-box" placeholder="Search product by name or barcode..." autocomplete="off">
               <div id="productSuggestions" style="
                 position:absolute;top:100%;left:0;right:0;z-index:200;
@@ -94,6 +100,26 @@
               "></div>
             </div>
 
+            <!-- Dynamic Variant Picker (Appears when variable product is selected) -->
+            <div id="variant-selection-container" style="display:none;" class="mb-6 p-4 rounded-xl bg-purple-50/70 border border-purple-200">
+              <div class="flex items-center justify-between flex-wrap gap-3">
+                <div class="flex items-center gap-3">
+                  <strong id="selected-product-title" class="text-sm text-purple-900 font-bold">Product</strong>
+                  <select id="variantSelect" class="rounded-lg border border-purple-300 text-sm px-3 py-1.5 focus:ring-2 focus:ring-purple-400 bg-white">
+                    <!-- Variant Options populated by JS -->
+                  </select>
+                </div>
+                <div class="flex items-center gap-4">
+                  <div class="text-xs bg-white px-3 py-1.5 rounded-lg border border-purple-200 shadow-sm font-semibold">
+                    <span class="text-gray-500">Available:</span> <strong id="source-avail-badge" class="text-purple-700 font-mono text-sm">0</strong>
+                  </div>
+                  <button type="button" onclick="confirmAddVariantItem()" class="btn btn-primary btn-sm" style="padding:6px 16px;">
+                    <i class="fas fa-plus mr-1"></i> Add Item
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <!-- Transfer Items Table -->
             <div id="transfer-items-section" style="display:none;margin-bottom:24px;">
               <label style="font-size:0.78rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:8px;" data-i18n="transfer_items">Transfer Items</label>
@@ -102,7 +128,8 @@
                   <thead>
                     <tr>
                       <th data-i18n="product_name">Product</th>
-                      <th data-i18n="stock">Available Stock</th>
+                      <th>Variant / الخيار</th>
+                      <th data-i18n="stock">Available in Source</th>
                       <th data-i18n="qty_return">Qty to Transfer</th>
                       <th data-i18n="actions">Action</th>
                     </tr>
@@ -172,6 +199,7 @@
 
   <script src="js/auth.js"></script>
   <script src="js/translations.js"></script>
+  <script src="js/store-context.js"></script>
   <script src="js/stock-transfer-app.js"></script>
 </body>
 </html>

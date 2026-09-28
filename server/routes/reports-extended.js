@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const prisma = require('../prisma');
+const inventoryReadService = require('../services/inventoryRead.service');
+
 
 // ================= EXTENDED REPORTS =================
 
@@ -317,6 +319,19 @@ router.get('/purchases-report', auth, requirePrivileged, async (req, res) => {
 
 // @route   GET /api/reports/price-list
 // @desc    All products with stock and pricing info
+// @route   GET /api/reports/inventory-valuation
+// @desc    Authoritative SSOT inventory valuation analysis by store and category
+router.get('/inventory-valuation', auth, requirePrivileged, async (req, res) => {
+    try {
+        const { storeId } = req.query;
+        const valuation = await inventoryReadService.getInventoryValuation(req.tenantId, storeId);
+        res.json(valuation);
+    } catch (err) {
+        console.error(err.message);
+        res.status(err.statusCode || 500).json({ msg: err.message || 'Server Error' });
+    }
+});
+
 router.get('/price-list', auth, async (req, res) => {
     try {
         const { storeId, search } = req.query;
@@ -332,24 +347,47 @@ router.get('/price-list', auth, async (req, res) => {
                     ]
                 })
             },
+            include: {
+                variantStocks: storeId ? { where: { storeId: String(storeId) } } : true
+            },
             orderBy: { name: 'asc' }
         });
 
-        const result = products.map(p => ({
-            id: p.id,
-            name: p.name,
-            barcode: p.barcode,
-            category: p.category,
-            price: p.price,
-            cost: p.cost,
-            stock: storeId
-                ? ((Array.isArray(p.stores) ? p.stores : []).find(s => s.storeId === storeId)?.stock ?? 0)
-                : p.stock,
-            stores: p.stores,
-            hasVariants: p.hasVariants,
-            variants: p.variants,
-            minStock: p.minStock
-        }));
+        const result = products.map(p => {
+            const vsList = Array.isArray(p.variantStocks) ? p.variantStocks : [];
+            const hasVariants = p.hasVariants && Array.isArray(p.variants) && p.variants.length > 0;
+            
+            let authoritativeStock = 0;
+            let updatedVariants = p.variants;
+
+            if (hasVariants) {
+                authoritativeStock = vsList.reduce((sum, vs) => sum + Number(vs.quantity || 0), 0);
+                updatedVariants = (p.variants || []).map(v => {
+                    const match = vsList.find(vs => String(vs.variantId) === String(v.id));
+                    return {
+                        ...v,
+                        stock: match ? Number(match.quantity || 0) : 0
+                    };
+                });
+            } else {
+                const stdVs = vsList.find(vs => vs.variantId === null);
+                authoritativeStock = stdVs ? Number(stdVs.quantity || 0) : 0;
+            }
+
+            return {
+                id: p.id,
+                name: p.name,
+                barcode: p.barcode,
+                category: p.category,
+                price: p.price,
+                cost: p.cost,
+                stock: authoritativeStock,
+                stores: p.stores,
+                hasVariants: p.hasVariants,
+                variants: updatedVariants,
+                minStock: p.minStock
+            };
+        });
 
         res.json(result);
     } catch (err) {
@@ -359,3 +397,4 @@ router.get('/price-list', auth, async (req, res) => {
 });
 
 module.exports = router;
+

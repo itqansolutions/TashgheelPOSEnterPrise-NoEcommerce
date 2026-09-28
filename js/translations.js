@@ -415,7 +415,8 @@ const translations = {
         report_inv_adj: "Inventory Adjustments",
         report_supplier_balances: "Supplier Balances",
         report_customer_balances: "Customer Balances",
-        report_purchases: "Purchases Report"
+        report_purchases: "Purchases Report",
+        report_inventory_valuation: "Inventory Valuation"
     },
     ar: {
         // Missing keys
@@ -827,7 +828,8 @@ const translations = {
         report_inv_adj: "تسويات المخزون",
         report_supplier_balances: "أرصدة الموردين",
         report_customer_balances: "أرصدة العملاء",
-        report_purchases: "تقرير المشتريات"
+        report_purchases: "تقرير المشتريات",
+        report_inventory_valuation: "تقييم المخزون"
     }
 };
 

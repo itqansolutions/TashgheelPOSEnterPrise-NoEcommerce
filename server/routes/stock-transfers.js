@@ -39,7 +39,39 @@ router.post('/', auth, async (req, res) => {
 
         await prisma.$transaction(async (tx) => {
             const transferCount = await tx.stockTransfer.count({ where: { tenantId: req.tenantId } });
-            const transferRef = 'TRF-' + (transferCount + 1);
+            // Authoritative Backend Stock Availability Validation under Store Lock
+            for (const item of items) {
+                const requestedQty = Math.abs(Number(item.qty || 0));
+                if (requestedQty <= 0) {
+                    const zeroErr = new Error('Transfer quantity must be greater than zero');
+                    zeroErr.statusCode = 400;
+                    throw zeroErr;
+                }
+
+                const product = await tx.product.findFirst({
+                    where: { id: item.productId, tenantId: req.tenantId }
+                });
+
+                if (product && product.trackStock !== false) {
+                    const sourceStock = await tx.variantStock.findFirst({
+                        where: {
+                            tenantId: req.tenantId,
+                            storeId: fromStoreId,
+                            productId: item.productId,
+                            variantId: item.variantId ? String(item.variantId) : null
+                        }
+                    });
+
+                    const availableQty = sourceStock ? Number(sourceStock.quantity) : 0;
+                    if (requestedQty > availableQty) {
+                        const insuffErr = new Error(
+                            `الكمية المطلوبة للتحويل (${requestedQty}) تتجاوز الرصيد المتاح (${availableQty}) في مخزن المصدر للمنتج [${product.name}]`
+                        );
+                        insuffErr.statusCode = 400;
+                        throw insuffErr;
+                    }
+                }
+            }
 
             // Authoritative Atomic Stock Transfer via Centralized Service
             await inventoryMutationService.recordTransfer(tx, {

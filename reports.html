@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8">
@@ -76,6 +76,7 @@
           <button class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg bg-white shadow-sm border border-gray-200 text-gray-700" onclick="switchReportTab('supplier-balances')" id="tab-supplier-balances" data-i18n="report_supplier_balances">Supplier Balances</button>
           <button class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg bg-white shadow-sm border border-gray-200 text-gray-700" onclick="switchReportTab('customer-balances')" id="tab-customer-balances" data-i18n="report_customer_balances">Customer Balances</button>
           <button class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg bg-white shadow-sm border border-gray-200 text-gray-700" onclick="switchReportTab('purchases')" id="tab-purchases" data-i18n="report_purchases">Purchases Report</button>
+          <button class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg bg-white shadow-sm border border-gray-200 text-gray-700" onclick="switchReportTab('inventory-valuation')" id="tab-inventory-valuation" data-i18n="report_inventory_valuation">Inventory Valuation</button>
         </div>
 
         <!-- ─────────────────────────────────────────────
@@ -338,6 +339,56 @@
                   </tr>
                 </thead>
                 <tbody id="purchases-breakdown-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────────
+             TAB 9: Inventory Valuation (Cost Basis SSOT)
+             ───────────────────────────────────────────── -->
+        <div id="panel-inventory-valuation" class="report-panel flex flex-col gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="stat-card blue">
+              <h3 id="valuationTotalValue">0.00</h3>
+              <p>Total Inventory Valuation</p>
+            </div>
+            <div class="stat-card green">
+              <h3 id="valuationTotalUnits">0</h3>
+              <p>Total Stock Units</p>
+            </div>
+            <div class="stat-card purple">
+              <h3 id="valuationItemsCount">0</h3>
+              <p>Valued Items Count</p>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl shadow-premium border border-gray-100 p-6">
+            <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+              <h2 class="text-base font-bold text-brand-dark">Inventory Valuation (Cost Basis SSOT)</h2>
+              <div class="flex flex-wrap items-center gap-3">
+                <select id="valuation-store" style="padding:6px 12px;border-radius:8px;border:1px solid #ccc;font-size:0.85rem">
+                  <option value="">All Stores</option>
+                </select>
+                <button onclick="runInventoryValuationReport()" class="btn btn-primary px-6" data-i18n="filter">Filter</button>
+                <button onclick="exportValuationCSV()" class="btn btn-secondary px-4"><i class="fas fa-file-csv mr-1"></i> Export CSV</button>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="data-table w-full">
+                <thead>
+                  <tr>
+                    <th>Store</th>
+                    <th>Product</th>
+                    <th>Variant</th>
+                    <th>SKU / Barcode</th>
+                    <th>Category</th>
+                    <th style="text-align:right">Quantity</th>
+                    <th style="text-align:right">Unit Cost</th>
+                    <th style="text-align:right">Total Valuation</th>
+                  </tr>
+                </thead>
+                <tbody id="valuation-table-body"></tbody>
               </table>
             </div>
           </div>

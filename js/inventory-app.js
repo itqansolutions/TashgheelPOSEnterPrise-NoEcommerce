@@ -1,218 +1,218 @@
 // js/inventory-app.js
-// Authoritative Inventory SSOT - VariantStock & Movement-driven UI
+// PHASE 2A.6: Authoritative Inventory SSOT - VariantStock & Movement-driven UI
 // API_URL is provided by auth.js
 
-let allStores = [];
-let allProducts = [];
+let inventoryData = {
+    store: null,
+    items: [],
+    totalItems: 0
+};
 let selectedStoreId = "";
-let expandedVariants = new Set();
+let lowStockFilterActive = false;
 
 function escapeAttr(str) {
     if (!str) return '';
     return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    loadInitialData();
+document.addEventListener("DOMContentLoaded", async () => {
+    // 1. Initialize Global Store Context on selector
+    const selector = document.getElementById("warehouse-filter");
+    if (selector && window.StoreContext) {
+        selectedStoreId = await window.StoreContext.syncSelector(selector, (newStoreId) => {
+            selectedStoreId = newStoreId;
+            loadInventory();
+        });
+    } else {
+        selectedStoreId = localStorage.getItem('pos_selected_store') || "";
+    }
 
-    document.getElementById("warehouse-filter").addEventListener("change", (e) => {
-        selectedStoreId = e.target.value;
-        onWarehouseChanged();
-    });
+    // 2. Setup listeners
+    document.getElementById("inventory-search")?.addEventListener("input", filterInventoryTable);
+    document.getElementById("adjust-form")?.addEventListener("submit", handleStockAdjustment);
 
-    document.getElementById("inventory-search").addEventListener("input", filterInventory);
-    document.getElementById("adjust-form").addEventListener("submit", handleStockAdjustment);
+    // 3. Initial load
+    await loadInventory();
 });
 
-async function loadInitialData() {
-    try {
-        const token = localStorage.getItem('token');
-        const storesRes = await fetch(`${API_URL}/stores`, { headers: { 'x-auth-token': token } });
-
-        if (!storesRes.ok) {
-            console.error("Failed to load stores");
-            return;
-        }
-
-        allStores = await storesRes.json();
-        populateStoresFilter();
-
-        if (allStores.length > 0) {
-            const savedStore = localStorage.getItem('inventory_selected_store');
-            selectedStoreId = (savedStore && allStores.find(s => s.id === savedStore)) ? savedStore : allStores[0].id;
-            document.getElementById("warehouse-filter").value = selectedStoreId;
-        }
-
-        await fetchProductsForStore(selectedStoreId);
-    } catch (error) {
-        console.error("Initialization Error:", error);
+async function loadInventory() {
+    if (!selectedStoreId) {
+        selectedStoreId = window.StoreContext ? window.StoreContext.getActiveStoreId() : localStorage.getItem('pos_selected_store');
     }
+    if (!selectedStoreId) return;
+
+    await Promise.all([
+        fetchStoreInventory(selectedStoreId),
+        fetchInventoryKPIs(selectedStoreId)
+    ]);
 }
 
-async function onWarehouseChanged() {
-    localStorage.setItem('inventory_selected_store', selectedStoreId);
-    await fetchProductsForStore(selectedStoreId);
-}
-
-async function fetchProductsForStore(storeId) {
-    try {
-        const token = localStorage.getItem('token');
-        const storeParam = storeId ? `?storeId=${encodeURIComponent(storeId)}` : '';
-        const productsRes = await fetch(`${API_URL}/products${storeParam}`, { headers: { 'x-auth-token': token } });
-
-        if (!productsRes.ok) {
-            console.error("Failed to load products");
-            return;
-        }
-
-        allProducts = await productsRes.json();
-        updateReconciliationLockBanner();
-        renderInventory();
-    } catch (error) {
-        console.error("Error loading products for store:", error);
-    }
-}
-
-function updateReconciliationLockBanner() {
-    const banner = document.getElementById("reconciliation-lock-banner");
-    const activeStore = allStores.find(s => s.id === selectedStoreId);
-    if (banner) {
-        banner.style.display = (activeStore && activeStore.isReconciling) ? "flex" : "none";
-    }
-}
-
-function populateStoresFilter() {
-    const filter = document.getElementById("warehouse-filter");
-    filter.innerHTML = "";
-
-    allStores.forEach(s => {
-        const opt = document.createElement("option");
-        opt.value = s.id;
-        opt.textContent = s.isReconciling ? `🔒 ${s.name} (قيد الجرد)` : s.name;
-        filter.appendChild(opt);
-    });
-}
-
-function toggleVariants(productId) {
-    if (expandedVariants.has(productId)) {
-        expandedVariants.delete(productId);
-    } else {
-        expandedVariants.add(productId);
-    }
-    renderInventory();
-}
-
-function renderInventory() {
+async function fetchStoreInventory(storeId) {
     const tbody = document.getElementById("inventory-table-body");
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i> جاري تحميل المخزون... / Loading inventory...</td></tr>`;
+    }
+
+    try {
+        const token = localStorage.getItem('token');
+        const lowStockChecked = document.getElementById("filter-low-stock")?.checked || lowStockFilterActive;
+        const lowStockParam = lowStockChecked ? '&lowStockOnly=true' : '';
+
+        const res = await fetch(`${API_URL}/inventory/store-stock?storeId=${encodeURIComponent(storeId)}${lowStockParam}`, {
+            headers: { 'x-auth-token': token }
+        });
+
+        if (!res.ok) {
+            console.error("Failed to load store inventory");
+            if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-red-500">فشل في تحميل المخزون</td></tr>`;
+            return;
+        }
+
+        inventoryData = await res.json();
+
+        // Update Store Status Badge & Lock Banner
+        updateStoreStatusUI(inventoryData.store);
+
+        // Render modernized table
+        renderInventoryTable();
+    } catch (err) {
+        console.error("Error loading store inventory:", err);
+        if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-red-500">حدث خطأ أثناء الاتصال بالسيرفر</td></tr>`;
+    }
+}
+
+async function fetchInventoryKPIs(storeId) {
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/inventory/summary?storeId=${encodeURIComponent(storeId)}`, {
+            headers: { 'x-auth-token': token }
+        });
+        if (!res.ok) return;
+
+        const kpis = await res.json();
+
+        const elUnits = document.getElementById("kpi-total-units");
+        const elVal = document.getElementById("kpi-total-valuation");
+        const elLow = document.getElementById("kpi-low-stock");
+        const elOut = document.getElementById("kpi-out-stock");
+        const elCur = document.getElementById("kpi-currency");
+
+        if (elUnits) elUnits.textContent = Number(kpis.totalUnits || 0).toLocaleString();
+        if (elVal) elVal.textContent = Number(kpis.totalValuation || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        if (elLow) elLow.textContent = Number(kpis.lowStockCount || 0).toLocaleString();
+        if (elOut) elOut.textContent = Number(kpis.outOfStockCount || 0).toLocaleString();
+        if (elCur) elCur.textContent = kpis.currency || 'EGP';
+    } catch (err) {
+        console.error("Error loading KPIs:", err);
+    }
+}
+
+function updateStoreStatusUI(store) {
+    const isLocked = Boolean(store && store.isReconciling);
+
+    // 1. Status Badge
+    const badgeContainer = document.getElementById("store-status-badge");
+    if (badgeContainer && window.StoreContext) {
+        window.StoreContext.renderStatusBadge(badgeContainer, store);
+    }
+
+    // 2. Reconciliation Lock Warning Banner
+    const banner = document.getElementById("reconciliation-lock-banner");
+    if (banner) {
+        banner.style.display = isLocked ? "flex" : "none";
+    }
+}
+
+function toggleLowStockFilter() {
+    const checkbox = document.getElementById("filter-low-stock");
+    if (checkbox) {
+        checkbox.checked = !checkbox.checked;
+        lowStockFilterActive = checkbox.checked;
+        loadInventory();
+    }
+}
+
+function renderInventoryTable() {
+    const tbody = document.getElementById("inventory-table-body");
+    if (!tbody) return;
     tbody.innerHTML = "";
 
-    const activeStore = allStores.find(s => s.id === selectedStoreId);
-    const isLocked = activeStore && activeStore.isReconciling;
+    const items = Array.isArray(inventoryData.items) ? inventoryData.items : [];
+    const isLocked = Boolean(inventoryData.store && inventoryData.store.isReconciling);
 
-    allProducts.forEach(p => {
-        const hasVariants = p.hasVariants && Array.isArray(p.variants) && p.variants.length > 0;
-        const variantStocksList = Array.isArray(p.variantStocks) ? p.variantStocks : [];
+    if (items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-gray-400">لا توجد منتجات مسجلة في هذا المخزن / No products found in this warehouse</td></tr>`;
+        return;
+    }
 
-        let totalStock = 0;
-        if (hasVariants) {
-            totalStock = variantStocksList.reduce((sum, vs) => sum + (vs.quantity || 0), 0);
-        } else {
-            const vs = variantStocksList.find(s => !s.variantId);
-            if (vs) {
-                totalStock = vs.quantity;
-            } else if (p.stores && p.stores.length > 0) {
-                const storeStock = p.stores.find(s => s.storeId.toString() === selectedStoreId.toString());
-                totalStock = storeStock ? storeStock.stock : 0;
-            } else {
-                totalStock = p.stock || 0;
-            }
-        }
-
+    items.forEach(item => {
         const row = document.createElement("tr");
-        row.dataset.productId = p.id;
+        row.dataset.productId = item.productId;
+        if (item.variantId) row.dataset.variantId = item.variantId;
 
-        // Low Stock Alert
-        if (p.trackStock !== false && totalStock <= (p.minStock || 5)) {
-            row.style.backgroundColor = "#fff3cd";
+        // Status badge styling
+        let statusBadge = '';
+        if (item.status === 'OUT_OF_STOCK') {
+            statusBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800">🔴 نافد / Out of Stock</span>`;
+            row.className = "bg-red-50/30";
+        } else if (item.status === 'LOW_STOCK') {
+            statusBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">🟡 منخفض / Low Stock</span>`;
+            row.className = "bg-amber-50/40";
+        } else {
+            statusBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">🟢 متوفر / In Stock</span>`;
         }
 
-        const stockDisplay = p.trackStock === false ? "∞" : totalStock;
-        const costDisplay = (p.cost || 0).toFixed(2);
-
-        let variantBadge = '';
-        let expandToggle = '';
-        if (hasVariants) {
-            const isExpanded = expandedVariants.has(p.id);
-            variantBadge = `<span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 ml-1 mr-1">${p.variants.length} خيارات / Variants</span>`;
-            expandToggle = `<button type="button" class="btn btn-secondary btn-sm" onclick="toggleVariants('${p.id}')" style="padding: 2px 8px; font-size: 11px; margin-right: 5px;">
-                ${isExpanded ? '▲ إخفاء' : '▼ تفاصيل'}
-            </button>`;
+        // Last movement display
+        let movementDisplay = '<span class="text-gray-400 text-xs">-</span>';
+        if (item.lastMovement) {
+            const m = item.lastMovement;
+            const deltaSign = m.quantityDelta > 0 ? `+${m.quantityDelta}` : `${m.quantityDelta}`;
+            const deltaColor = m.quantityDelta > 0 ? 'text-emerald-700 font-bold' : 'text-rose-700 font-bold';
+            const mDate = new Date(m.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            movementDisplay = `
+                <div class="text-xs">
+                    <span class="inline-block px-1.5 py-0.5 rounded bg-gray-100 font-mono text-[10px] text-gray-700 mr-1">${m.type}</span>
+                    <span class="${deltaColor}">${deltaSign}</span>
+                    <span class="text-[10px] text-gray-400 block">${mDate}</span>
+                </div>
+            `;
         }
+
+        // Variant badge
+        const variantLabel = item.hasVariants
+            ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-800">🏷️ ${item.variantName}</span>`
+            : `<span class="text-xs text-gray-400 font-mono">(Standard)</span>`;
+
+        // Stock quantity styling (Strictly SSOT)
+        const qtyColor = item.quantity <= 0 ? 'text-rose-600' : 'text-slate-900';
 
         row.innerHTML = `
-            <td>
-                <div class="flex items-center">
-                    ${expandToggle}
-                    <div>
-                        <div style="font-weight:bold;">${p.name} ${variantBadge}</div>
-                        <div style="font-size:0.8em; color:#666;">${p.code || p.barcode || '-'}</div>
-                    </div>
-                </div>
+            <td class="font-semibold text-slate-800">
+                ${item.productName}
+                <span class="block text-[11px] text-gray-400 font-normal">${item.category}</span>
             </td>
-            <td>${p.barcode || "-"}</td>
-            <td>${p.category || "-"}</td>
-            <td>${costDisplay}</td>
-            <td style="font-weight:bold; ${totalStock < 0 ? 'color:red;' : ''}">${stockDisplay}</td>
+            <td class="font-mono text-xs text-gray-600">${item.barcode || '-'}</td>
+            <td>${variantLabel}</td>
+            <td class="font-mono text-xs text-gray-700">${Number(item.cost || 0).toFixed(2)}</td>
+            <td class="font-bold text-base ${qtyColor}">${item.quantity}</td>
+            <td class="font-mono text-xs text-gray-500">${item.minStock || 0}</td>
+            <td>${statusBadge}</td>
+            <td>${movementDisplay}</td>
             <td>
-                ${!hasVariants ? (
-                    p.trackStock !== false ? 
-                        `<button class="btn btn-warning btn-sm" ${isLocked ? 'disabled title="الفرع مغلق للجرد الافتتاحي"' : ''} onclick="openAdjustModal('${p.id}', '${escapeAttr(p.name)}', ${totalStock})">🛠️ Adjust</button>` 
-                        : '-'
-                ) : (
-                    `<button class="btn btn-info btn-sm" onclick="toggleVariants('${p.id}')" style="font-size:11px;">🔍 الخيارات</button>`
-                )}
+                <button class="btn btn-warning btn-sm shadow-sm"
+                        ${isLocked ? 'disabled title="الفرع مغلق حالياً لإجراء الجرد الافتتاحي"' : ''}
+                        onclick="openAdjustModal('${item.productId}', '${escapeAttr(item.productName)}', ${item.quantity}, '${item.variantId || ''}', '${escapeAttr(item.variantName || '')}')">
+                    🛠️ Adjust
+                </button>
             </td>
         `;
+
         tbody.appendChild(row);
-
-        // If variable product and expanded, render sub-rows for each variant
-        if (hasVariants && expandedVariants.has(p.id)) {
-            p.variants.forEach(v => {
-                const vs = variantStocksList.find(s => s.variantId === v.id);
-                const vStock = vs ? vs.quantity : ((v.stock !== undefined && v.stock !== null) ? v.stock : 0);
-                const vCost = (v.cost !== undefined && v.cost !== null && !isNaN(parseFloat(v.cost))) ? parseFloat(v.cost).toFixed(2) : costDisplay;
-                const vTitle = v.attributes ? Object.values(v.attributes).join(' / ') : (v.sku || 'Variant');
-
-                const subRow = document.createElement("tr");
-                subRow.className = "variant-sub-row bg-slate-50";
-                subRow.dataset.productId = p.id;
-                subRow.dataset.variantId = v.id;
-
-                subRow.innerHTML = `
-                    <td style="padding-left: 2.5rem;">
-                        <span class="text-blue-500 font-bold mr-1">↳</span>
-                        <strong class="text-slate-800">${vTitle}</strong>
-                        <span class="text-xs text-gray-500 ml-2">(${v.sku || '-'})</span>
-                    </td>
-                    <td class="text-xs text-gray-500">${v.barcode || v.sku || '-'}</td>
-                    <td class="text-xs text-gray-400">Variant</td>
-                    <td>${vCost}</td>
-                    <td style="font-weight:bold; ${vStock < 0 ? 'color:red;' : 'color:#1e40af;'}">${vStock}</td>
-                    <td>
-                        <button class="btn btn-warning btn-sm" ${isLocked ? 'disabled title="الفرع مغلق للجرد الافتتاحي"' : ''} 
-                                onclick="openAdjustModal('${p.id}', '${escapeAttr(p.name)}', ${vStock}, '${v.id}', '${escapeAttr(vTitle)}')">
-                            🛠️ Adjust Variant
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(subRow);
-            });
-        }
     });
 }
 
-function filterInventory() {
-    const query = document.getElementById("inventory-search").value.toLowerCase();
+function filterInventoryTable() {
+    const query = (document.getElementById("inventory-search")?.value || "").toLowerCase().trim();
     const rows = document.querySelectorAll("#inventory-table-body tr");
     rows.forEach(row => {
         const text = row.textContent.toLowerCase();
@@ -220,88 +220,84 @@ function filterInventory() {
     });
 }
 
-// --- ADJUSTMENT LOGIC ---
-
-function openAdjustModal(productId, productName, currentStock, variantId = null, variantName = null) {
-    const store = allStores.find(s => s.id === selectedStoreId);
-    if (store && store.isReconciling) {
-        alert("لا يمكن إجراء تعديل يدوي: هذا المخزن مغلق حالياً لإجراء الجرد الافتتاحي.");
+function openAdjustModal(productId, productName, currentStock, variantId = '', variantName = '') {
+    const isLocked = Boolean(inventoryData.store && inventoryData.store.isReconciling);
+    if (isLocked) {
+        alert("لا يمكن تعديل المخزون: الفرع مغلق حالياً لإجراء الجرد الافتتاحي.");
         return;
     }
 
     document.getElementById("adjust-product-id").value = productId;
-    document.getElementById("adjust-variant-id").value = variantId || "";
+    document.getElementById("adjust-variant-id").value = variantId;
     document.getElementById("adjust-product-name").textContent = productName;
 
-    const variantNameEl = document.getElementById("adjust-variant-name");
-    if (variantNameEl) {
-        if (variantName) {
-            variantNameEl.textContent = `خيار: ${variantName}`;
-            variantNameEl.style.display = "inline";
+    const varNameEl = document.getElementById("adjust-variant-name");
+    if (varNameEl) {
+        if (variantId && variantName) {
+            varNameEl.textContent = `Variant: ${variantName}`;
+            varNameEl.style.display = "inline";
         } else {
-            variantNameEl.textContent = "";
-            variantNameEl.style.display = "none";
+            varNameEl.style.display = "none";
         }
     }
 
-    document.getElementById("adjust-warehouse-name").textContent = store ? store.name : "N/A";
+    document.getElementById("adjust-warehouse-name").textContent = inventoryData.store?.name || selectedStoreId;
     document.getElementById("adjust-old-stock").value = currentStock;
-    document.getElementById("adjust-new-stock").value = currentStock;
-    document.getElementById("adjust-reason").value = "Audit";
+    document.getElementById("adjust-new-stock").value = "";
+    document.getElementById("adjust-new-stock").focus();
 
     document.getElementById("adjustModal").style.display = "flex";
 }
 
 function closeAdjustModal() {
     document.getElementById("adjustModal").style.display = "none";
+    document.getElementById("adjust-form").reset();
 }
 
 async function handleStockAdjustment(e) {
     e.preventDefault();
-
+    const token = localStorage.getItem('token');
     const productId = document.getElementById("adjust-product-id").value;
     const variantId = document.getElementById("adjust-variant-id").value || null;
-    const newStock = parseInt(document.getElementById("adjust-new-stock").value);
+    const oldStock = parseFloat(document.getElementById("adjust-old-stock").value) || 0;
+    const newStock = parseFloat(document.getElementById("adjust-new-stock").value);
     const reason = document.getElementById("adjust-reason").value;
-    const storeId = selectedStoreId;
 
-    if (isNaN(newStock)) return alert("Invalid stock value");
-
-    const payload = {
-        storeId,
-        items: [
-            { productId, variantId, newStock, reason }
-        ]
-    };
+    if (isNaN(newStock) || newStock < 0) {
+        alert("يرجى إدخال رصيد فعلي صحيح (أكبر من أو يساوي صفر)");
+        return;
+    }
 
     try {
-        const token = localStorage.getItem('token');
         const res = await fetch(`${API_URL}/inventory/adjust`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-auth-token': token },
-            body: JSON.stringify(payload)
+            headers: {
+                'Content-Type': 'application/json',
+                'x-auth-token': token
+            },
+            body: JSON.stringify({
+                storeId: selectedStoreId,
+                productId,
+                variantId,
+                newStock,
+                reason
+            })
         });
 
+        const data = await res.json();
+
         if (res.ok) {
-            alert("Stock adjusted successfully");
             closeAdjustModal();
-            await fetchProductsForStore(selectedStoreId);
+            await loadInventory();
         } else {
-            const err = await res.json();
-            if (res.status === 423 || err.code === 'STORE_LOCKED_FOR_RECONCILIATION') {
-                alert("🔒 عذراً: هذا المخزن مغلق حالياً لإجراء الجرد الافتتاحي. تم إيقاف التعديلات اليدوية لحين اعتماد الجرد.");
+            if (res.status === 423 || data.code === 'STORE_LOCKED_FOR_RECONCILIATION') {
+                alert(`⚠️ الفرع مغلق للجرد: ${data.msg || 'لا يمكن تسجيل تعديل للمخزون'}`);
             } else {
-                alert("Error: " + (err.msg || "Failed to adjust stock"));
+                alert(`خطأ: ${data.msg || 'فشل في حفظ التعديل'}`);
             }
         }
-    } catch (error) {
-        console.error(error);
-        alert("Server error during adjustment");
+    } catch (err) {
+        console.error("Adjustment error:", err);
+        alert("حدث خطأ أثناء حفظ التعديل");
     }
 }
-
-// Global Refresh Helper
-window.loadInventory = () => fetchProductsForStore(selectedStoreId);
-window.openAdjustModal = openAdjustModal;
-window.closeAdjustModal = closeAdjustModal;
-window.toggleVariants = toggleVariants;

@@ -101,6 +101,11 @@ async function loadProducts() {
   }
 }
 
+function escapeAttr(str) {
+    if (!str) return '';
+    return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
 function renderProductTable(products) {
     const tbody = document.getElementById("product-table-body");
     tbody.innerHTML = "";
@@ -108,20 +113,32 @@ function renderProductTable(products) {
     products.forEach((p) => {
       const row = document.createElement("tr");
       
-      const statusHtml = p.active !== false 
-        ? `<span class="badge badge-success" data-i18n="active">${getTranslation('active')}</span>`
-        : `<span class="badge badge-danger" data-i18n="inactive">${getTranslation('inactive') || 'Inactive'}</span>`;
+      const vsList = Array.isArray(p.variantStocks) ? p.variantStocks : [];
+      let totalStock = 0;
+      if (p.hasVariants) {
+          totalStock = vsList.reduce((sum, vs) => sum + Number(vs.quantity || 0), 0);
+      } else {
+          const vs = vsList.find(s => !s.variantId);
+          totalStock = vs ? Number(vs.quantity || 0) : 0;
+      }
+
+      const hasVarBadge = p.hasVariants 
+          ? `<span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 ml-1">🏷️ ${(p.variants || []).length} Variants</span>`
+          : '';
 
       row.innerHTML = `
         <td>
-            <div style="font-weight:bold;">${p.name}</div>
+            <div style="font-weight:bold;">${p.name} ${hasVarBadge}</div>
             <div style="font-size:0.8em; color:#666;">${p.code || '-'}</div>
         </td>
         <td>${p.barcode || "-"}</td>
         <td>${p.category || "-"}</td>
         <td class="text-brand-green font-bold">${p.price?.toFixed(2) || "0.00"}</td>
-        <td class="font-bold">${p.stock || 0}</td>
-        <td>
+        <td class="font-bold font-mono text-base ${totalStock <= 0 ? 'text-rose-600' : 'text-slate-800'}">${p.trackStock === false ? '∞' : totalStock}</td>
+        <td class="flex items-center gap-1.5 flex-wrap">
+          <button class="btn btn-primary btn-sm" onclick="openProductMatrixModal('${p.id}', '${escapeAttr(p.name)}')" title="عرض مصفوفة المخزون بالمخازن">
+            🏢 المخزون / Matrix
+          </button>
           <button class="btn btn-secondary btn-sm" onclick="editProduct('${p.id}')">✏️</button>
           <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">🗑️</button>
         </td>
@@ -129,6 +146,7 @@ function renderProductTable(products) {
       tbody.appendChild(row);
     });
 }
+
 
 async function handleAddProduct(e) {
   e.preventDefault();
@@ -352,3 +370,183 @@ async function deleteCategory(id) {
     console.error(error);
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// PHASE 2A.6: Interactive Variant x Store Matrix & Ledger Drill-Down
+// ─────────────────────────────────────────────────────────────
+
+async function openProductMatrixModal(productId, productName) {
+    const modal = document.getElementById("productInventoryMatrixModal");
+    const container = document.getElementById("matrix-table-container");
+    const nameEl = document.getElementById("matrix-modal-product-name");
+    const drilldown = document.getElementById("matrix-drilldown-panel");
+
+    if (nameEl) nameEl.textContent = productName;
+    if (drilldown) drilldown.style.display = "none";
+    if (container) {
+        container.innerHTML = `<div class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i> جاري تحميل مصفوفة المخزون...</div>`;
+    }
+    if (modal) modal.style.display = "flex";
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/inventory/product-matrix/${encodeURIComponent(productId)}`, {
+            headers: { 'x-auth-token': token }
+        });
+
+        if (!res.ok) {
+            container.innerHTML = `<div class="text-center py-6 text-red-500">فشل في تحميل مصفوفة المخزون</div>`;
+            return;
+        }
+
+        const data = await res.json();
+        renderMatrixTable(data);
+    } catch (err) {
+        console.error("Matrix load error:", err);
+        container.innerHTML = `<div class="text-center py-6 text-red-500">حدث خطأ في الاتصال</div>`;
+    }
+}
+
+function renderMatrixTable(matrixData) {
+    const container = document.getElementById("matrix-table-container");
+    if (!container) return;
+
+    const { stores = [], rows = [], storeTotals = {}, grandTotal = 0, product } = matrixData;
+
+    let storeHeaders = stores.map(s => `
+        <th class="px-4 py-2 text-center text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-700">
+            ${s.isReconciling ? '🔒 ' : ''}${s.name}
+            ${s.isReconciling ? '<span class="block text-[9px] text-amber-700 font-normal">قيد الجرد</span>' : ''}
+        </th>
+    `).join('');
+
+    let tableRows = rows.map(r => {
+        let storeCells = stores.map(s => {
+            const qty = r.storeStocks[s.id] || 0;
+            const isZero = qty === 0;
+            const isNeg = qty < 0;
+            const btnColor = isNeg ? 'text-red-700 bg-red-50 hover:bg-red-100' : isZero ? 'text-gray-400 bg-gray-50 hover:bg-gray-100' : 'text-blue-700 bg-blue-50 hover:bg-blue-100 font-bold';
+
+            return `
+                <td class="px-4 py-2 text-center">
+                    <button type="button"
+                            class="px-2.5 py-1 text-xs rounded border border-gray-200 transition-colors ${btnColor}"
+                            onclick="openDrilldown('${product.id}', '${s.id}', '${r.variantId || ''}', '${escapeAttr(r.label)}', '${escapeAttr(s.name)}')"
+                            title="عرض حركات دفتر الأستاذ">
+                        ${qty}
+                    </button>
+                </td>
+            `;
+        }).join('');
+
+        return `
+            <tr class="hover:bg-gray-50 border-b border-gray-100">
+                <td class="px-4 py-2 font-semibold text-slate-800 text-xs">
+                    ${r.label}
+                    <span class="block text-[10px] text-gray-400 font-mono">${r.barcode || '-'}</span>
+                </td>
+                ${storeCells}
+                <td class="px-4 py-2 text-center font-bold font-mono text-sm bg-slate-50 text-slate-900 border-l border-gray-200">
+                    ${r.totalQty}
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    let totalCells = stores.map(s => `
+        <td class="px-4 py-2 text-center font-bold font-mono text-sm text-slate-800 bg-slate-100">
+            ${storeTotals[s.id] || 0}
+        </td>
+    `).join('');
+
+    container.innerHTML = `
+        <table class="w-full data-table text-xs border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+            <thead>
+                <tr class="border-b border-gray-200">
+                    <th class="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-700">Variant / خيار</th>
+                    ${storeHeaders}
+                    <th class="px-4 py-2 text-center text-xs font-bold uppercase tracking-wider bg-slate-200 text-slate-800 border-l border-gray-300">Total / الإجمالي</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${tableRows}
+            </tbody>
+            <tfoot>
+                <tr class="border-t-2 border-gray-300 font-bold bg-slate-100">
+                    <td class="px-4 py-2 text-left uppercase text-xs font-bold text-slate-700">Store Totals</td>
+                    ${totalCells}
+                    <td class="px-4 py-2 text-center font-black font-mono text-base text-brand-purple bg-purple-50 border-l border-gray-300">
+                        ${grandTotal}
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    `;
+}
+
+async function openDrilldown(productId, storeId, variantId, variantLabel, storeName) {
+    const drilldown = document.getElementById("matrix-drilldown-panel");
+    const titleEl = document.getElementById("drilldown-title");
+    const subtitleEl = document.getElementById("drilldown-subtitle");
+    const tbody = document.getElementById("drilldown-table-body");
+
+    if (titleEl) titleEl.textContent = `📋 Ledger Movements: ${variantLabel} @ ${storeName}`;
+    if (subtitleEl) subtitleEl.textContent = "جاري تحميل سجل الحركات...";
+    if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500"><i class="fas fa-spinner fa-spin mr-1"></i> Loading...</td></tr>`;
+    if (drilldown) drilldown.style.display = "block";
+
+    try {
+        const token = localStorage.getItem('token');
+        const varParam = variantId ? `&variantId=${encodeURIComponent(variantId)}` : '';
+        const res = await fetch(`${API_URL}/inventory/variant-movements?storeId=${encodeURIComponent(storeId)}&productId=${encodeURIComponent(productId)}${varParam}&limit=15`, {
+            headers: { 'x-auth-token': token }
+        });
+
+        if (!res.ok) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-3 text-red-500">فشل في تحميل الحركات</td></tr>`;
+            return;
+        }
+
+        const data = await res.json();
+        if (subtitleEl) {
+            subtitleEl.textContent = `الرصيد الفعلي الحالي: ${data.currentStock} قطعة (آخر ${data.movements?.length || 0} حركات)`;
+        }
+
+        const movements = Array.isArray(data.movements) ? data.movements : [];
+        if (movements.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-400">لا توجد حركات مسجلة لهذا العنصر في هذا الفرع</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = movements.map(m => {
+            const sign = m.quantityDelta > 0 ? `+${m.quantityDelta}` : `${m.quantityDelta}`;
+            const color = m.quantityDelta > 0 ? 'text-emerald-700 font-bold' : 'text-rose-700 font-bold';
+            const dateStr = new Date(m.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+
+            return `
+                <tr>
+                    <td><span class="px-2 py-0.5 rounded font-mono text-[10px] bg-gray-100 font-bold">${m.type}</span></td>
+                    <td class="${color}">${sign}</td>
+                    <td class="font-mono text-gray-600">${m.quantityBefore} → ${m.quantityAfter}</td>
+                    <td class="text-gray-500">${dateStr}</td>
+                    <td class="text-gray-600">${m.notes || m.referenceId || '-'}</td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error("Drilldown error:", err);
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-3 text-red-500">خطأ في الاتصال</td></tr>`;
+    }
+}
+
+function closeDrilldownPanel() {
+    const drilldown = document.getElementById("matrix-drilldown-panel");
+    if (drilldown) drilldown.style.display = "none";
+}
+
+function closeProductMatrixModal() {
+    const modal = document.getElementById("productInventoryMatrixModal");
+    if (modal) modal.style.display = "none";
+    closeDrilldownPanel();
+}
+

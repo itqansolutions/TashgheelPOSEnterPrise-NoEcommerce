@@ -1,5 +1,6 @@
 // Stock Transfer App — Tashgheel POS Enterprise
-// Requires: auth.js, translations.js
+// PHASE 2A.6: SSOT Variant Selection & Live Availability Guard
+// Requires: auth.js, translations.js, store-context.js
 
 document.addEventListener('DOMContentLoaded', () => {
     // ── Auth Guard ────────────────────────────────────────────────
@@ -14,9 +15,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── State ─────────────────────────────────────────────────────
-    let selectedItems = []; // [{ id, name, code, maxStock, qty }]
+    let selectedItems = []; // [{ id, name, code, variantId, variantName, maxStock, qty }]
     let searchDebounce = null;
     let suggestionsList = [];
+    let pendingProduct = null;
+    let allStores = [];
 
     // ── Helper: get token ─────────────────────────────────────────
     function getToken() { return localStorage.getItem('token') || ''; }
@@ -32,40 +35,80 @@ document.addEventListener('DOMContentLoaded', () => {
             : '0 8px 24px rgba(16,185,129,0.35)';
         toastMsg.textContent = msg;
         toast.style.display = 'flex';
-        setTimeout(() => { toast.style.display = 'none'; }, 3000);
+        setTimeout(() => { toast.style.display = 'none'; }, 3500);
     }
 
     // ── Load Stores ───────────────────────────────────────────────
     async function loadStores() {
         try {
-            const res = await fetch('/api/stores', {
-                headers: { 'x-auth-token': getToken() }
-            });
-            if (!res.ok) return;
-            const stores = await res.json();
+            allStores = window.StoreContext ? await window.StoreContext.loadStores() : [];
+            if (allStores.length === 0) {
+                const res = await fetch('/api/stores', {
+                    headers: { 'x-auth-token': getToken() }
+                });
+                if (res.ok) allStores = await res.json();
+            }
+
             const fromSel = document.getElementById('fromStore');
             const toSel = document.getElementById('toStore');
             if (!fromSel || !toSel) return;
 
-            // Clear existing options except default placeholder
             while (fromSel.options.length > 1) fromSel.remove(1);
             while (toSel.options.length > 1) toSel.remove(1);
 
-            stores.forEach(s => {
+            allStores.forEach(s => {
                 const opt1 = document.createElement('option');
                 opt1.value = s.id;
-                opt1.textContent = s.name;
+                opt1.textContent = s.isReconciling ? `🔒 ${s.name} (قيد الجرد)` : s.name;
                 fromSel.appendChild(opt1);
 
                 const opt2 = document.createElement('option');
                 opt2.value = s.id;
-                opt2.textContent = s.name;
+                opt2.textContent = s.isReconciling ? `🔒 ${s.name} (قيد الجرد)` : s.name;
                 toSel.appendChild(opt2);
             });
+
+            // Restore from global store context
+            const activeStoreId = window.StoreContext ? window.StoreContext.getActiveStoreId() : localStorage.getItem('pos_selected_store');
+            if (activeStoreId && allStores.some(s => String(s.id) === String(activeStoreId))) {
+                fromSel.value = activeStoreId;
+                updateStoreBadges();
+            }
         } catch (err) {
             console.error('Error loading stores:', err);
         }
     }
+
+    function updateStoreBadges() {
+        const fromSel = document.getElementById('fromStore');
+        const toSel = document.getElementById('toStore');
+        const fromBadge = document.getElementById('from-store-status');
+        const toBadge = document.getElementById('to-store-status');
+
+        if (fromSel && fromBadge && window.StoreContext) {
+            const s = allStores.find(st => String(st.id) === String(fromSel.value));
+            window.StoreContext.renderStatusBadge(fromBadge, s);
+        }
+        if (toSel && toBadge && window.StoreContext) {
+            const s = allStores.find(st => String(st.id) === String(toSel.value));
+            window.StoreContext.renderStatusBadge(toBadge, s);
+        }
+    }
+
+    document.getElementById('fromStore')?.addEventListener('change', (e) => {
+        if (window.StoreContext) window.StoreContext.setActiveStoreId(e.target.value, 'transfer');
+        updateStoreBadges();
+        // Clear items since source store changed
+        if (selectedItems.length > 0) {
+            selectedItems = [];
+            renderTransferTable();
+            showToast('تمت إعادة تعيين بنود التحويل لتغيير مخزن المصدر', 'info');
+        }
+    });
+
+    document.getElementById('toStore')?.addEventListener('change', () => {
+        updateStoreBadges();
+    });
 
     // ── Product Search Autocomplete ───────────────────────────────
     const searchInp = document.getElementById('productSearch');
@@ -103,7 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 300);
         });
 
-        // Close suggestions list on click outside
         document.addEventListener('click', (e) => {
             if (e.target !== searchInp && e.target !== suggDiv) {
                 suggDiv.style.display = 'none';
@@ -119,46 +161,122 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        suggDiv.innerHTML = products.map(p => `
-            <div class="sugg-item" style="padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.2s;"
-                 onclick="addItemToTransfer('${p.id}')"
-                 onmouseover="this.style.background='var(--brand-gray-light)'"
-                 onmouseout="this.style.background='#fff'">
-                <div style="font-weight:600;font-size:0.88rem;">${p.name}</div>
-                <div style="font-size:0.75rem;color:var(--text-3);display:flex;justify-between;align-items:center;">
-                    <span>Barcode: ${p.barcode || '-'}</span>
-                    <span style="font-weight:600;margin-left:auto;">Stock: ${p.stock}</span>
+        suggDiv.innerHTML = products.map(p => {
+            const hasVar = p.hasVariants && Array.isArray(p.variants) && p.variants.length > 0;
+            const badge = hasVar ? `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-800 font-bold ml-1">🏷️ ${p.variants.length} Variants</span>` : '';
+            return `
+                <div class="sugg-item" style="padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.2s;"
+                     onclick="handleProductSuggestionClick('${p.id}')"
+                     onmouseover="this.style.background='var(--brand-gray-light)'"
+                     onmouseout="this.style.background='#fff'">
+                    <div style="font-weight:600;font-size:0.88rem;">${p.name} ${badge}</div>
+                    <div style="font-size:0.75rem;color:var(--text-3);display:flex;justify-content:space-between;align-items:center;">
+                        <span>Barcode: ${p.barcode || '-'}</span>
+                        <span style="font-weight:600;margin-left:auto;color:#1e40af;">Available in Source: ${p.stock ?? 0}</span>
+                    </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
         suggDiv.style.display = 'block';
     }
 
-    window.addItemToTransfer = function(productId) {
+    window.handleProductSuggestionClick = function(productId) {
         const prod = suggestionsList.find(p => p.id === productId);
         if (!prod) return;
 
         searchInp.value = '';
         suggDiv.style.display = 'none';
 
-        // Check if already added
-        const exists = selectedItems.find(item => item.id === productId);
+        const hasVar = prod.hasVariants && Array.isArray(prod.variants) && prod.variants.length > 0;
+
+        if (hasVar) {
+            // Show Variant Picker container
+            pendingProduct = prod;
+            const container = document.getElementById('variant-selection-container');
+            const titleEl = document.getElementById('selected-product-title');
+            const selectEl = document.getElementById('variantSelect');
+            const badgeEl = document.getElementById('source-avail-badge');
+
+            if (titleEl) titleEl.textContent = prod.name;
+            if (selectEl) {
+                selectEl.innerHTML = prod.variants.map(v => {
+                    const vStock = Number(v.stock || 0);
+                    return `<option value="${v.id}" data-stock="${vStock}">${v.name || v.id} (Available: ${vStock})</option>`;
+                }).join('');
+
+                const firstOpt = selectEl.options[0];
+                if (badgeEl && firstOpt) badgeEl.textContent = firstOpt.dataset.stock || '0';
+
+                selectEl.onchange = () => {
+                    const opt = selectEl.options[selectEl.selectedIndex];
+                    if (badgeEl && opt) badgeEl.textContent = opt.dataset.stock || '0';
+                };
+            }
+
+            if (container) container.style.display = 'block';
+        } else {
+            // Standard Product
+            addTransferItem({
+                id: prod.id,
+                name: prod.name,
+                code: prod.barcode || '',
+                variantId: null,
+                variantName: null,
+                maxStock: Number(prod.stock || 0),
+                qty: 1
+            });
+        }
+    };
+
+    window.confirmAddVariantItem = function() {
+        if (!pendingProduct) return;
+        const selectEl = document.getElementById('variantSelect');
+        if (!selectEl) return;
+
+        const opt = selectEl.options[selectEl.selectedIndex];
+        if (!opt) return;
+
+        const variantId = opt.value;
+        const maxStock = Number(opt.dataset.stock || 0);
+        const variantObj = pendingProduct.variants.find(v => String(v.id) === String(variantId));
+        const variantName = variantObj ? (variantObj.name || variantObj.id) : opt.textContent;
+
+        addTransferItem({
+            id: pendingProduct.id,
+            name: pendingProduct.name,
+            code: variantObj?.barcode || pendingProduct.barcode || '',
+            variantId,
+            variantName,
+            maxStock,
+            qty: 1
+        });
+
+        // Hide picker
+        const container = document.getElementById('variant-selection-container');
+        if (container) container.style.display = 'none';
+        pendingProduct = null;
+    };
+
+    function addTransferItem(itemData) {
+        // Check if already in list
+        const exists = selectedItems.find(item => item.id === itemData.id && item.variantId === itemData.variantId);
         if (exists) {
-            exists.qty += 1;
+            if (exists.qty < exists.maxStock) {
+                exists.qty += 1;
+            } else {
+                showToast(`تم الوصول للحد الأقصى للمخزون المتاح (${exists.maxStock})`, 'error');
+            }
             renderTransferTable();
             return;
         }
 
-        selectedItems.push({
-            id: prod.id,
-            name: prod.name,
-            code: prod.barcode || '',
-            maxStock: prod.stock || 0,
-            qty: 1
-        });
+        if (itemData.maxStock <= 0) {
+            showToast('تنبيه: الرصيد المتاح في مخزن المصدر هو 0', 'error');
+        }
 
+        selectedItems.push(itemData);
         renderTransferTable();
-    };
+    }
 
     // ── Render Transfer Cart Table ────────────────────────────────
     function renderTransferTable() {
@@ -173,44 +291,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         sect.style.display = 'block';
-        tbody.innerHTML = selectedItems.map((item, idx) => `
-            <tr>
-                <td>
-                    <div style="font-weight:600">${item.name}</div>
-                    <div style="font-size:0.72rem;color:var(--text-3)">${item.code || '-'}</div>
-                </td>
-                <td style="font-weight:600">${item.maxStock}</td>
-                <td>
-                    <input type="number" value="${item.qty}" min="1" max="${item.maxStock}"
-                           style="width:80px;padding:6px;border:1px solid var(--border);border-radius:var(--r-md);font-weight:600"
-                           onchange="updateItemQty(${idx}, this.value)">
-                </td>
-                <td>
-                    <button class="action-btn delete-btn" onclick="removeItem(${idx})">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = selectedItems.map((item, idx) => {
+            const isOverStock = item.qty > item.maxStock;
+            const inputBorder = isOverStock ? 'border-color:#ef4444;background:#fef2f2;' : '';
+            const variantDisplay = item.variantId
+                ? `<span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-800">🏷️ ${item.variantName}</span>`
+                : `<span class="text-xs text-gray-400 font-mono">(Standard)</span>`;
+
+            return `
+                <tr class="${isOverStock ? 'bg-red-50/50' : ''}">
+                    <td>
+                        <div style="font-weight:600">${item.name}</div>
+                        <div style="font-size:0.72rem;color:var(--text-3)">${item.code || '-'}</div>
+                    </td>
+                    <td>${variantDisplay}</td>
+                    <td style="font-weight:bold;font-family:monospace;font-size:0.95rem;color:#1e40af;">${item.maxStock}</td>
+                    <td>
+                        <input type="number" value="${item.qty}" min="1" max="${item.maxStock}"
+                               style="width:85px;padding:6px;border:1.5px solid var(--border);border-radius:var(--r-md);font-weight:bold;text-align:center;${inputBorder}"
+                               onchange="updateItemQty(${idx}, this.value)">
+                        ${isOverStock ? '<span class="block text-[10px] text-red-600 font-bold mt-1">يتجاوز المتاح!</span>' : ''}
+                    </td>
+                    <td>
+                        <button class="action-btn delete-btn" onclick="removeItem(${idx})" title="حذف">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
     }
 
     window.updateItemQty = function(idx, val) {
         const qty = parseInt(val) || 1;
         selectedItems[idx].qty = qty;
+        renderTransferTable();
     };
 
     window.removeItem = function(idx) {
         selectedItems.splice(idx, 1);
         renderTransferTable();
     };
-
-    // ── Reset Form ────────────────────────────────────────────────
-    function resetForm() {
-        selectedItems = [];
-        document.getElementById('transferNotes').value = '';
-        document.getElementById('productSearch').value = '';
-        renderTransferTable();
-    }
 
     // ── Submit Stock Transfer ─────────────────────────────────────
     window.submitTransfer = async function() {
@@ -229,19 +350,32 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Check if either store is locked for reconciliation
+        const fromStore = allStores.find(s => String(s.id) === String(fromStoreId));
+        const toStore = allStores.find(s => String(s.id) === String(toStoreId));
+
+        if (fromStore && fromStore.isReconciling) {
+            showToast(`⚠️ مخزن المصدر [${fromStore.name}] مغلق حالياً لإجراء الجرد الافتتاحي`, 'error');
+            return;
+        }
+        if (toStore && toStore.isReconciling) {
+            showToast(`⚠️ مخزن الوجهة [${toStore.name}] مغلق حالياً لإجراء الجرد الافتتاحي`, 'error');
+            return;
+        }
+
         if (selectedItems.length === 0) {
             showToast(lang === 'ar' ? 'يرجى إضافة صنف واحد على الأقل للتحويل' : 'Please add at least one item to transfer', 'error');
             return;
         }
 
-        // Validate quantities vs available stock
+        // Validate quantities vs available stock (Client-side UX check)
         for (const item of selectedItems) {
             if (item.qty <= 0) {
                 showToast(lang === 'ar' ? 'الكمية غير صالحة' : 'Invalid quantity', 'error');
                 return;
             }
             if (item.qty > item.maxStock) {
-                showToast(lang === 'ar' ? `الكمية المطلوبة لـ ${item.name} تتجاوز المخزون المتاح` : `Quantity for ${item.name} exceeds available stock`, 'error');
+                showToast(lang === 'ar' ? `الكمية المطلوبة لـ [${item.name}] تتجاوز الرصيد المتاح (${item.maxStock})` : `Quantity for ${item.name} exceeds available stock (${item.maxStock})`, 'error');
                 return;
             }
         }
@@ -249,41 +383,57 @@ document.addEventListener('DOMContentLoaded', () => {
         const body = {
             fromStoreId,
             toStoreId,
-            notes,
             items: selectedItems.map(item => ({
                 productId: item.id,
+                variantId: item.variantId || null,
                 qty: item.qty
-            }))
+            })),
+            notes: notes || undefined
         };
 
-        const btn = document.getElementById('submitTransferBtn');
-        if (btn) btn.disabled = true;
+        const submitBtn = document.getElementById('submitTransferBtn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Processing...';
+        }
 
         try {
             const res = await fetch('/api/stock-transfers', {
                 method: 'POST',
                 headers: {
-                    'x-auth-token': getToken(),
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'x-auth-token': getToken()
                 },
                 body: JSON.stringify(body)
             });
 
+            const data = await res.json();
+
             if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                showToast(errData.msg || (lang === 'ar' ? 'فشل تحويل المخزون' : 'Failed to transfer stock'), 'error');
-                if (btn) btn.disabled = false;
+                if (res.status === 423 || data.code === 'STORE_LOCKED_FOR_RECONCILIATION') {
+                    showToast(`🔒 الفرع مغلق للجرد: ${data.msg || 'لا يمكن إجراء التحويل'}`, 'error');
+                } else {
+                    showToast(data.msg || 'Failed to complete transfer', 'error');
+                }
                 return;
             }
 
-            showToast(lang === 'ar' ? 'تم تحويل المخزون بنجاح' : 'Stock transferred successfully');
-            resetForm();
+            showToast(lang === 'ar' ? `✅ تم التحويل بنجاح برقم: ${data.transferRef || ''}` : `✅ Transfer created: ${data.transferRef || ''}`, 'success');
+
+            // Reset state
+            selectedItems = [];
+            document.getElementById('transferNotes').value = '';
+            document.getElementById('productSearch').value = '';
+            renderTransferTable();
             loadHistory();
         } catch (err) {
-            console.error('Error submitting transfer:', err);
-            showToast(lang === 'ar' ? 'خطأ في الاتصال' : 'Connection error', 'error');
+            console.error('Submit transfer error:', err);
+            showToast('Connection error', 'error');
         } finally {
-            if (btn) btn.disabled = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Transfer';
+            }
         }
     };
 
@@ -292,88 +442,52 @@ document.addEventListener('DOMContentLoaded', () => {
         const tbody = document.getElementById('history-body');
         if (!tbody) return;
 
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-3);"><i class="fas fa-spinner fa-spin mr-1"></i> Loading...</td></tr>`;
+
         try {
             const res = await fetch('/api/stock-transfers', {
                 headers: { 'x-auth-token': getToken() }
             });
             if (!res.ok) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--red);">Failed to load history</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--red);">Failed to load history</td></tr>`;
                 return;
             }
-            const data = await res.json();
-            renderHistory(data);
+
+            const transfers = await res.json();
+            if (!transfers.length) {
+                const lang = localStorage.getItem('pos_language') || 'en';
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-3);">${lang === 'ar' ? 'لا توجد تحويلات سابقة' : 'No transfers recorded yet'}</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = transfers.map(t => {
+                const dateStr = new Date(t.date).toLocaleDateString() + ' ' + new Date(t.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const fromName = allStores.find(s => s.id === t.fromStoreId)?.name || t.fromStoreId;
+                const toName = allStores.find(s => s.id === t.toStoreId)?.name || t.toStoreId;
+                const items = Array.isArray(t.items) ? t.items : [];
+                const itemsCount = items.reduce((acc, i) => acc + (i.qty || 0), 0);
+
+                return `
+                    <tr>
+                        <td style="font-size:0.8rem;color:var(--text-2)">${dateStr}</td>
+                        <td style="font-weight:600">${fromName}</td>
+                        <td style="font-weight:600">${toName}</td>
+                        <td>
+                            <span class="inline-block px-2 py-0.5 rounded text-xs font-mono font-bold bg-blue-100 text-blue-800">
+                                ${itemsCount} items (${items.length} skus)
+                            </span>
+                        </td>
+                        <td style="font-size:0.8rem">${t.transferredBy || '-'}</td>
+                        <td style="font-size:0.8rem;color:var(--text-3)">${t.notes || '-'}</td>
+                    </tr>
+                `;
+            }).join('');
         } catch (err) {
-            console.error('Error loading history:', err);
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--red);">Connection error</td></tr>`;
+            console.error('History load error:', err);
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--red);">Connection error</td></tr>`;
         }
     };
 
-    // Helper: format date
-    function formatDate(dateStr) {
-        if (!dateStr) return '-';
-        const d = new Date(dateStr);
-        return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-
-    // Resolve store name
-    async function getStoreNamesMap() {
-        try {
-            const res = await fetch('/api/stores', {
-                headers: { 'x-auth-token': getToken() }
-            });
-            if (!res.ok) return {};
-            const stores = await res.json();
-            const map = {};
-            stores.forEach(s => { map[s.id] = s.name; });
-            return map;
-        } catch (err) {
-            console.error(err);
-            return {};
-        }
-    }
-
-    async function renderHistory(transfers) {
-        const tbody = document.getElementById('history-body');
-        const lang = localStorage.getItem('pos_language') || 'en';
-        if (!tbody) return;
-
-        if (!transfers || transfers.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-3);">${lang === 'ar' ? 'لا يوجد سجل تحويلات' : 'No transfers found'}</td></tr>`;
-            return;
-        }
-
-        const storeMap = await getStoreNamesMap();
-
-        tbody.innerHTML = transfers.map(t => {
-            const fromName = storeMap[t.fromStoreId] || t.fromStoreId;
-            const toName = storeMap[t.toStoreId] || t.toStoreId;
-            const itemsCount = Array.isArray(t.items) ? t.items.length : 0;
-
-            return `
-                <tr>
-                    <td style="font-size:0.8rem;color:var(--text-2);font-weight:500;">${formatDate(t.date)}</td>
-                    <td style="font-weight:600">${fromName}</td>
-                    <td style="font-weight:600">${toName}</td>
-                    <td>
-                        <span class="badge badge-info">${itemsCount} ${lang === 'ar' ? 'أصناف' : 'items'}</span>
-                    </td>
-                    <td>${t.transferredBy || '-'}</td>
-                    <td style="font-size:0.8rem;color:var(--text-2);">${t.notes || '-'}</td>
-                </tr>
-            `;
-        }).join('');
-    }
-
-    // Reset autocomplete if warehouse source changes
-    if (fromStoreSel) {
-        fromStoreSel.addEventListener('change', () => {
-            selectedItems = [];
-            renderTransferTable();
-        });
-    }
-
     // ── Init ──────────────────────────────────────────────────────
-    loadStores();
-    loadHistory();
-    if (window.applyTranslations) window.applyTranslations();
+    loadStores().then(() => loadHistory());
 });

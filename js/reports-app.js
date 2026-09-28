@@ -75,6 +75,8 @@ document.addEventListener('DOMContentLoaded', () => {
             runInvAdjReport();
         } else if (tabId === 'purchases') {
             runPurchasesReport();
+        } else if (tabId === 'inventory-valuation') {
+            runInventoryValuationReport();
         }
     };
 
@@ -87,7 +89,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 stores = await storeRes.json();
                 const dSelect = document.getElementById('discounts-store');
                 const iSelect = document.getElementById('inv-adj-store');
-                [dSelect, iSelect].forEach(sel => {
+                const vSelect = document.getElementById('valuation-store');
+                [dSelect, iSelect, vSelect].forEach(sel => {
                     if (!sel) return;
                     while (sel.options.length > 1) sel.remove(1);
                     stores.forEach(s => {
@@ -571,6 +574,95 @@ document.addEventListener('DOMContentLoaded', () => {
             tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--red);">Connection error</td></tr>`;
             breakBody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--red);">Connection error</td></tr>`;
         }
+    };
+
+    // ── TAB 9: Inventory Valuation (SSOT) ──────────────────────────
+    let currentValuationData = null;
+
+    window.runInventoryValuationReport = async function() {
+        const tbody = document.getElementById('valuation-table-body');
+        if (!tbody) return;
+
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>`;
+
+        try {
+            const storeId = document.getElementById('valuation-store')?.value || '';
+            const params = new URLSearchParams();
+            if (storeId) params.append('storeId', storeId);
+
+            const res = await fetch(`/api/reports/inventory-valuation?${params.toString()}`, {
+                headers: { 'x-auth-token': getToken() }
+            });
+            if (!res.ok) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--red);">Failed to load report</td></tr>`;
+                return;
+            }
+            const data = await res.json();
+            currentValuationData = data;
+
+            const currency = data.currency || 'EGP';
+            const totalValEl = document.getElementById('valuationTotalValue');
+            const totalUnitsEl = document.getElementById('valuationTotalUnits');
+            const itemsCountEl = document.getElementById('valuationItemsCount');
+
+            if (totalValEl) totalValEl.textContent = `${(data.totalValuation || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+            if (totalUnitsEl) totalUnitsEl.textContent = (data.totalUnits || 0).toLocaleString();
+            if (itemsCountEl) itemsCountEl.textContent = (data.items || []).length.toLocaleString();
+
+            tbody.innerHTML = '';
+            const items = Array.isArray(data.items) ? data.items : [];
+            items.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="font-medium">${item.storeName || '-'}</td>
+                    <td class="font-bold">${item.productName || '-'}</td>
+                    <td>${item.variantName || '<span class="text-gray-400">Standard</span>'}</td>
+                    <td class="font-mono text-xs">${item.sku || item.barcode || '-'}</td>
+                    <td><span class="px-2 py-0.5 rounded-full text-xs bg-gray-100">${item.category || 'General'}</span></td>
+                    <td style="text-align:right; font-weight:600">${item.quantity}</td>
+                    <td style="text-align:right">${item.unitCost.toFixed(2)} ${currency}</td>
+                    <td style="text-align:right; font-weight:700; color:var(--brand-blue)">${item.totalValuation.toFixed(2)} ${currency}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            if (items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-3);">${t('No inventory items found', 'لا توجد منتجات بالمخزون')}</td></tr>`;
+            }
+        } catch (err) {
+            console.error(err);
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--red);">Connection error</td></tr>`;
+        }
+    };
+
+    window.exportValuationCSV = function() {
+        if (!currentValuationData || !Array.isArray(currentValuationData.items) || currentValuationData.items.length === 0) {
+            alert(t('No data to export', 'لا توجد بيانات للتصدير'));
+            return;
+        }
+
+        const headers = ["Store", "Product", "Variant", "SKU", "Barcode", "Category", "Quantity", "Unit Cost", "Total Valuation", "Currency"];
+        const rows = currentValuationData.items.map(item => [
+            `"${(item.storeName || '').replace(/"/g, '""')}"`,
+            `"${(item.productName || '').replace(/"/g, '""')}"`,
+            `"${(item.variantName || 'Standard').replace(/"/g, '""')}"`,
+            `"${(item.sku || '').replace(/"/g, '""')}"`,
+            `"${(item.barcode || '').replace(/"/g, '""')}"`,
+            `"${(item.category || '').replace(/"/g, '""')}"`,
+            item.quantity,
+            item.unitCost,
+            item.totalValuation,
+            `"${currentValuationData.currency || 'EGP'}"`
+        ]);
+
+        const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `inventory_valuation_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     // ── Init ──────────────────────────────────────────────────────

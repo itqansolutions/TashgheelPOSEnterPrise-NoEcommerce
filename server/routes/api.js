@@ -5,6 +5,8 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../prisma');
 const { acquireStoreInventoryLock } = require('../services/inventoryLock.service');
 const inventoryMutationService = require('../services/inventoryMutation.service');
+const inventoryReadService = require('../services/inventoryRead.service');
+
 
 // ================= STORES (WAREHOUSES) =================
 
@@ -1135,58 +1137,110 @@ router.post('/inventory/adjust', auth, async (req, res) => {
 });
 
 // @route   GET /api/inventory/store-stock
-// @desc    Get real-time authoritative stock for a warehouse directly from VariantStock
+// @desc    Get real-time authoritative stock for a warehouse directly via InventoryReadService
 router.get('/inventory/store-stock', auth, async (req, res) => {
     try {
-        const { storeId } = req.query;
+        const { storeId, search, category, lowStockOnly } = req.query;
         if (!storeId) {
             return res.status(400).json({ msg: 'storeId is required' });
         }
 
-        const stocks = await prisma.variantStock.findMany({
+        const data = await inventoryReadService.getStoreInventory(req.tenantId, storeId, {
+            search,
+            category,
+            lowStockOnly: lowStockOnly === 'true' || lowStockOnly === true
+        });
+
+        // Also include raw stocks array for backward compatibility
+        const rawStocks = await prisma.variantStock.findMany({
             where: { tenantId: req.tenantId, storeId: String(storeId) }
         });
 
-        res.json({ storeId, stocks });
+        res.json({
+            storeId,
+            store: data.store,
+            items: data.items,
+            stocks: rawStocks,
+            totalItems: data.totalItems
+        });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(err.statusCode || 500).json({ msg: err.message || 'Server Error' });
+    }
+});
+
+// @route   GET /api/inventory/summary
+// @desc    Get high-level executive KPI summary (Total Units, Valuation, Low Stock, Movements)
+router.get('/inventory/summary', auth, async (req, res) => {
+    try {
+        const { storeId } = req.query;
+        const kpis = await inventoryReadService.getInventoryKPIs(req.tenantId, storeId);
+        res.json(kpis);
+    } catch (err) {
+        console.error(err.message);
+        res.status(err.statusCode || 500).json({ msg: err.message || 'Server Error' });
+    }
+});
+
+// @route   GET /api/inventory/available
+// @desc    Check exact real-time available stock for POS & Transfer guards
+router.get('/api/inventory/available', auth, async (req, res) => {
+    try {
+        const { storeId, productId, variantId } = req.query;
+        if (!storeId || !productId) {
+            return res.status(400).json({ msg: 'storeId and productId are required' });
+        }
+        const avail = await inventoryReadService.getAvailableQuantity(req.tenantId, storeId, productId, variantId);
+        res.json(avail);
+    } catch (err) {
+        console.error(err.message);
+        res.status(err.statusCode || 500).json({ msg: err.message || 'Server Error' });
+    }
+});
+
+// @route   GET /api/inventory/product-matrix/:id
+// @desc    Get 2D Variant x Store inventory matrix for product details
+router.get('/inventory/product-matrix/:id', auth, async (req, res) => {
+    try {
+        const matrix = await inventoryReadService.getProductStoreMatrix(req.tenantId, req.params.id);
+        res.json(matrix);
+    } catch (err) {
+        console.error(err.message);
+        res.status(err.statusCode || 500).json({ msg: err.message || 'Server Error' });
+    }
+});
+
+// @route   GET /api/inventory/variant-movements
+// @desc    Get recent movement history for drill-down on a specific Variant x Store cell
+router.get('/inventory/variant-movements', auth, async (req, res) => {
+    try {
+        const { storeId, productId, variantId, limit } = req.query;
+        if (!storeId || !productId) {
+            return res.status(400).json({ msg: 'storeId and productId are required' });
+        }
+        const history = await inventoryReadService.getVariantMovementHistory(
+            req.tenantId,
+            storeId,
+            productId,
+            variantId,
+            limit ? parseInt(limit) : 10
+        );
+        res.json(history);
+    } catch (err) {
+        console.error(err.message);
+        res.status(err.statusCode || 500).json({ msg: err.message || 'Server Error' });
     }
 });
 
 // @route   GET /api/inventory/movements
-// @desc    Get paginated inventory movements ledger
+// @desc    Get paginated inventory movements ledger with multi-criteria filtering
 router.get('/inventory/movements', auth, async (req, res) => {
     try {
-        const { storeId, productId, variantId, limit = 50, page = 1 } = req.query;
-        const take = Math.min(100, Math.max(1, parseInt(limit) || 50));
-        const skip = (Math.max(1, parseInt(page) || 1) - 1) * take;
-
-        const where = {
-            tenantId: req.tenantId,
-            ...(storeId && { storeId: String(storeId) }),
-            ...(productId && { productId: String(productId) }),
-            ...(variantId && { variantId: String(variantId) })
-        };
-
-        const [movements, total] = await Promise.all([
-            prisma.inventoryMovement.findMany({
-                where,
-                orderBy: { createdAt: 'desc' },
-                take,
-                skip,
-                include: {
-                    product: { select: { id: true, name: true, barcode: true } },
-                    store: { select: { id: true, name: true } }
-                }
-            }),
-            prisma.inventoryMovement.count({ where })
-        ]);
-
-        res.json({ movements, total, page: parseInt(page) || 1, limit: take });
+        const ledger = await inventoryReadService.getMovementsLedger(req.tenantId, req.query);
+        res.json(ledger);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(err.statusCode || 500).json({ msg: err.message || 'Server Error' });
     }
 });
 
@@ -1700,25 +1754,48 @@ router.get('/price-list', auth, async (req, res) => {
                     ]
                 })
             },
+            include: {
+                variantStocks: storeId ? { where: { storeId: String(storeId) } } : true
+            },
             orderBy: { name: 'asc' }
         });
         
-        // If storeId filter, return only that store's stock
-        const result = products.map(p => ({
-            id: p.id,
-            name: p.name,
-            barcode: p.barcode,
-            category: p.category,
-            price: p.price,
-            cost: p.cost,
-            stock: storeId
-                ? ((Array.isArray(p.stores) ? p.stores : []).find(s => s.storeId === storeId)?.stock ?? 0)
-                : p.stock,
-            stores: p.stores,
-            hasVariants: p.hasVariants,
-            variants: p.variants,
-            minStock: p.minStock
-        }));
+        // Compute authoritative stock exclusively from VariantStock (No silent fallback)
+        const result = products.map(p => {
+            const vsList = Array.isArray(p.variantStocks) ? p.variantStocks : [];
+            const hasVariants = p.hasVariants && Array.isArray(p.variants) && p.variants.length > 0;
+            
+            let authoritativeStock = 0;
+            let updatedVariants = p.variants;
+
+            if (hasVariants) {
+                authoritativeStock = vsList.reduce((sum, vs) => sum + Number(vs.quantity || 0), 0);
+                updatedVariants = (p.variants || []).map(v => {
+                    const match = vsList.find(vs => String(vs.variantId) === String(v.id));
+                    return {
+                        ...v,
+                        stock: match ? Number(match.quantity || 0) : 0
+                    };
+                });
+            } else {
+                const stdVs = vsList.find(vs => vs.variantId === null);
+                authoritativeStock = stdVs ? Number(stdVs.quantity || 0) : 0;
+            }
+
+            return {
+                id: p.id,
+                name: p.name,
+                barcode: p.barcode,
+                category: p.category,
+                price: p.price,
+                cost: p.cost,
+                stock: authoritativeStock,
+                stores: p.stores,
+                hasVariants: p.hasVariants,
+                variants: updatedVariants,
+                minStock: p.minStock
+            };
+        });
         
         res.json(result);
     } catch (err) {

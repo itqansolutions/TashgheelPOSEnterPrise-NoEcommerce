@@ -55,16 +55,42 @@
           </div>
         </div>
       </header>
-      <section style="flex: 1; padding: 2rem; display: flex; flex-direction: column; gap: 2rem; background-color: transparent;">
+      <section style="flex: 1; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; background-color: transparent;">
+        <!-- Executive KPI Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
+          <div class="stat-card blue">
+            <h3 id="kpi-total-units">0</h3>
+            <p data-i18n="kpi_total_units">Total Stock Units</p>
+          </div>
+          <div class="stat-card green">
+            <h3 id="kpi-total-valuation">0.00</h3>
+            <p><span data-i18n="kpi_valuation">Inventory Valuation</span> (<span id="kpi-currency">EGP</span>)</p>
+          </div>
+          <div class="stat-card orange cursor-pointer" onclick="toggleLowStockFilter()" title="Click to filter low stock">
+            <h3 id="kpi-low-stock">0</h3>
+            <p data-i18n="kpi_low_stock">Low Stock Items</p>
+          </div>
+          <div class="stat-card purple">
+            <h3 id="kpi-out-stock">0</h3>
+            <p data-i18n="kpi_out_stock">Out of Stock Items</p>
+          </div>
+        </div>
+
+        <!-- Inventory Table Card -->
         <div class="bg-white rounded-2xl shadow-premium border border-gray-100 overflow-hidden">
-          <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center flex-wrap gap-3">
-            <div class="flex items-center gap-3">
+          <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center flex-wrap gap-4">
+            <div class="flex items-center gap-3 flex-wrap">
               <label class="font-semibold text-sm" data-i18n="warehouse">Warehouse:</label>
-              <select id="warehouse-filter" class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-blue focus:border-brand-blue" style="width:220px;"></select>
+              <select id="warehouse-filter" class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-blue focus:border-brand-blue font-medium" style="width:220px;"></select>
+              <div id="store-status-badge"></div>
             </div>
-            <div class="flex items-center gap-2">
-              <input type="text" id="inventory-search" placeholder="Search product..." class="search-box" style="width:260px;" data-i18n-placeholder="search_placeholder">
-              <button onclick="loadInventory()" class="btn btn-secondary">🔄</button>
+            <div class="flex items-center gap-3 flex-wrap">
+              <label class="flex items-center gap-2 text-xs font-semibold text-gray-600 bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                <input type="checkbox" id="filter-low-stock" onchange="loadInventory()" class="rounded text-brand-blue focus:ring-brand-blue">
+                <span data-i18n="low_stock_only">Low Stock Only</span>
+              </label>
+              <input type="text" id="inventory-search" placeholder="Search product..." class="search-box" style="width:220px;" data-i18n-placeholder="search_placeholder">
+              <button onclick="loadInventory()" class="btn btn-secondary" title="Refresh">🔄</button>
               <a href="reconciliation.html" class="btn btn-primary text-sm flex items-center gap-1.5" style="text-decoration:none;">
                 <i class="fas fa-clipboard-check"></i> <span data-i18n="nav_reconciliation">Opening Reconciliation</span>
               </a>
@@ -87,10 +113,13 @@
               <thead>
                 <tr>
                   <th data-i18n="product">Product</th>
-                  <th data-i18n="barcode">Barcode</th>
-                  <th data-i18n="category">Category</th>
+                  <th data-i18n="barcode">Barcode / SKU</th>
+                  <th data-i18n="variant">Variant</th>
                   <th data-i18n="cost">Unit Cost</th>
                   <th data-i18n="current_stock">Current Stock</th>
+                  <th data-i18n="min_stock">Min Stock</th>
+                  <th data-i18n="status">Status</th>
+                  <th data-i18n="last_movement">Last Movement</th>
                   <th data-i18n="actions">Actions</th>
                 </tr>
               </thead>
@@ -141,6 +170,7 @@
 
   <script src="js/auth.js"></script>
   <script src="js/translations.js"></script>
+  <script src="js/store-context.js"></script>
   <script src="js/inventory-app.js"></script>
 </body>
 </html>

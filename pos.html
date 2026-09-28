@@ -166,6 +166,11 @@
           <input type="text" id="productSearch" placeholder="Search..." class="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 shadow-sm focus:ring-2 focus:ring-brand-blue outline-none transition-all text-sm">
         </div>
         <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2">
+            <select id="pos-warehouse-selector" class="px-3 py-2 rounded-xl border border-gray-200 text-sm font-medium bg-white text-gray-700 shadow-sm focus:ring-2 focus:ring-brand-blue outline-none">
+            </select>
+            <div id="store-status-badge"></div>
+          </div>
           <button class="relative p-2 text-gray-500 hover:text-brand-dark transition-colors">
             <i class="far fa-bell text-xl"></i>
             <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#f4f7f9]"></span>
@@ -451,6 +456,7 @@
   <!-- Scripts -->
   <script src="js/auth.js"></script>
   <script src="js/translations.js"></script>
+  <script src="js/store-context.js"></script>
   <script src="js/pos-app.js"></script>
 </body>
 

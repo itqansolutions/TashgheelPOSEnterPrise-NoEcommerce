@@ -97,18 +97,42 @@ async function checkOpenShift() {
             opt.textContent = s.isReconciling ? `🔒 ${s.name} (قيد الجرد)` : s.name;
             posWarehouseSelector.appendChild(opt);
         });
+        
+        // Restore active store from StoreContext or localStorage
+        const activeStore = (window.StoreContext ? window.StoreContext.getActiveStoreId() : null) || localStorage.getItem('pos_selected_store');
+        if (activeStore && allowedStores.some(s => String(s.id) === String(activeStore))) {
+            posWarehouseSelector.value = activeStore;
+        } else if (allowedStores.length > 0) {
+            posWarehouseSelector.value = allowedStores[0].id;
+        }
+
+        if (window.StoreContext) {
+            window.StoreContext.setActiveStoreId(posWarehouseSelector.value, 'posInit');
+            window.StoreContext.renderStatusBadge(document.getElementById('store-status-badge'));
+        }
+
         posWarehouseSelector.addEventListener('change', () => {
             const selectedVal = posWarehouseSelector.value;
-            localStorage.setItem('pos_selected_store', selectedVal);
+            if (window.StoreContext) {
+                window.StoreContext.setActiveStoreId(selectedVal, 'posSelector');
+                window.StoreContext.renderStatusBadge(document.getElementById('store-status-badge'));
+            } else {
+                localStorage.setItem('pos_selected_store', selectedVal);
+            }
             checkReconciliationLock(selectedVal);
             loadProducts();
         });
         
-        // Restore last selected store if available
-        const savedStore = localStorage.getItem('pos_selected_store');
-        if (savedStore && allowedStores.find(s => s.id === savedStore)) {
-            posWarehouseSelector.value = savedStore;
-        }
+        window.addEventListener('storeContextChanged', (e) => {
+            if (e.detail.storeId && posWarehouseSelector.value !== e.detail.storeId) {
+                posWarehouseSelector.value = e.detail.storeId;
+                checkReconciliationLock(e.detail.storeId);
+                if (window.StoreContext) {
+                    window.StoreContext.renderStatusBadge(document.getElementById('store-status-badge'));
+                }
+                loadProducts();
+            }
+        });
 
         checkReconciliationLock(posWarehouseSelector.value);
     }
@@ -661,7 +685,7 @@ function renderProducts() {
     return;
   }
 
-  const selectedStoreId = document.getElementById('pos-warehouse-selector')?.value || localStorage.getItem('pos_selected_store');
+  const selectedStoreId = (window.StoreContext ? window.StoreContext.getActiveStoreId() : null) || document.getElementById('pos-warehouse-selector')?.value || localStorage.getItem('pos_selected_store');
 
   filteredProducts.forEach((product) => {
     const hasVariants = product.hasVariants && Array.isArray(product.variants) && product.variants.length > 0;
@@ -669,17 +693,22 @@ function renderProducts() {
 
     let currentStock = 0;
     if (hasVariants) {
-      currentStock = variantStocksList.reduce((sum, vs) => sum + (vs.quantity || 0), 0);
-    } else {
-      const vs = variantStocksList.find(s => !s.variantId);
-      if (vs) {
-        currentStock = vs.quantity;
-      } else if (product.stores && selectedStoreId) {
-        const storeStock = product.stores.find(s => s.storeId.toString() === selectedStoreId.toString());
-        currentStock = storeStock ? storeStock.stock : 0;
+      if (selectedStoreId) {
+        currentStock = variantStocksList
+          .filter(vs => vs.storeId && String(vs.storeId) === String(selectedStoreId))
+          .reduce((sum, vs) => sum + (Number(vs.quantity) || 0), 0);
       } else {
-        currentStock = product.stock || 0;
+        currentStock = variantStocksList.reduce((sum, vs) => sum + (Number(vs.quantity) || 0), 0);
       }
+    } else {
+      let vs = null;
+      if (selectedStoreId) {
+        vs = variantStocksList.find(s => !s.variantId && s.storeId && String(s.storeId) === String(selectedStoreId));
+      } else {
+        vs = variantStocksList.find(s => !s.variantId);
+      }
+      // Authoritative SSOT: Strictly VariantStock quantity, ZERO silent fallback
+      currentStock = vs ? (Number(vs.quantity) || 0) : 0;
     }
 
     let priceDisplay = `$${product.price.toFixed(2)}`;
@@ -858,8 +887,14 @@ window.selectVariant = function(productId, variantIdentifier) {
     const variantTitle = variant.attributes ? Object.values(variant.attributes).join(' / ') : (variant.sku || 'Variant');
 
     const variantStocksList = Array.isArray(product.variantStocks) ? product.variantStocks : [];
-    const vs = variantStocksList.find(s => s.variantId === variant.id);
-    const vStock = vs ? vs.quantity : ((variant.stock !== undefined && variant.stock !== null) ? variant.stock : (product.currentStock ?? product.stock ?? 0));
+    const selectedStoreId = (window.StoreContext ? window.StoreContext.getActiveStoreId() : null) || document.getElementById('pos-warehouse-selector')?.value || localStorage.getItem('pos_selected_store');
+    let vs = null;
+    if (selectedStoreId) {
+      vs = variantStocksList.find(s => String(s.variantId) === String(variant.id) && s.storeId && String(s.storeId) === String(selectedStoreId));
+    } else {
+      vs = variantStocksList.find(s => String(s.variantId) === String(variant.id));
+    }
+    const vStock = vs ? (Number(vs.quantity) || 0) : 0;
 
     const variantProduct = {
         ...product,
@@ -905,8 +940,14 @@ function addToCart(product) {
           const vPrice = (v.price !== undefined && v.price !== null && !isNaN(parseFloat(v.price))) ? parseFloat(v.price) : product.price;
           
           const variantStocksList = Array.isArray(product.variantStocks) ? product.variantStocks : [];
-          const vs = variantStocksList.find(s => s.variantId === v.id);
-          const vStock = vs ? vs.quantity : ((v.stock !== undefined && v.stock !== null) ? v.stock : (product.currentStock ?? product.stock ?? 0));
+          const selectedStoreId = (window.StoreContext ? window.StoreContext.getActiveStoreId() : null) || document.getElementById('pos-warehouse-selector')?.value || localStorage.getItem('pos_selected_store');
+          let vs = null;
+          if (selectedStoreId) {
+            vs = variantStocksList.find(s => String(s.variantId) === String(v.id) && s.storeId && String(s.storeId) === String(selectedStoreId));
+          } else {
+            vs = variantStocksList.find(s => String(s.variantId) === String(v.id));
+          }
+          const vStock = vs ? (Number(vs.quantity) || 0) : 0;
 
           btn.innerHTML = `
             <div class="flex justify-between items-center">
@@ -931,7 +972,7 @@ function addToCart(product) {
     variantId: null,
     variantTitle: null,
     variantAttributes: null,
-    stock: product.currentStock !== undefined ? product.currentStock : (product.stock || 0)
+    stock: product.currentStock !== undefined ? product.currentStock : 0
   };
   addToCartDirect(standardProduct);
 }
