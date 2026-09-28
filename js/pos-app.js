@@ -870,9 +870,10 @@ function renderProducts() {
       stockBadgeHtml = `🟢 ${currentStock} ${t('in stock', 'متوفر')}`;
     }
 
-    const imageHtml = product.imageUrl 
-      ? `<img src="${product.imageUrl}" alt="${product.name}" onerror="this.style.display='none'; this.parentElement.innerHTML=getProductFallbackVisual({name: '${(product.name||'').replace(/'/g, "\\'")}', category: '${(product.category||'').replace(/'/g, "\\"')}'});">`
-      : getProductFallbackVisual(product);
+    const fallbackVisual = getProductFallbackVisual(product);
+    const imageHtml = (product.imageUrl && String(product.imageUrl).trim() !== '')
+      ? `<img src="${product.imageUrl}" alt="" class="w-full h-full object-cover" onerror="this.classList.add('hidden'); if(this.nextElementSibling) this.nextElementSibling.classList.remove('hidden');"><div class="hidden w-full h-full">${fallbackVisual}</div>`
+      : fallbackVisual;
 
     const variantPill = hasVariants 
       ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200/60 shadow-xs"><i class="fas fa-layer-group text-[8px]"></i> ${product.variants.length} ${t('options', 'خيارات')}</span>`
