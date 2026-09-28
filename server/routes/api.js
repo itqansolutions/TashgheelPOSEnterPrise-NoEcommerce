@@ -443,8 +443,6 @@ router.post('/sales', auth, async (req, res) => {
                     date: new Date(),
                     method: paymentMethod,
                     orderType: orderType || 'instore',
-                    platform: req.body.platform || 'local',
-                    onlineOrderId: req.body.onlineOrderId || null,
                     cashier: req.user.username,
                     salesman: salesman || null,
                     customerId: req.body.customerId || null,

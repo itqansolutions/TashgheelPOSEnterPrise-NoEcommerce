@@ -253,7 +253,6 @@ router.post('/:id/pay', auth, async (req, res) => {
                     date: new Date(),
                     method: method || 'cash',
                     orderType: 'instore',
-                    platform: 'local',
                     cashier: req.user.username,
                     customerId: order.customerId || null,
                     total: order.totalAmount,
