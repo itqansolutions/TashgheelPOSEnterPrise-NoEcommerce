@@ -19,7 +19,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const variantsToggle = document.getElementById("product-has-variants");
   if (variantsToggle) {
       variantsToggle.addEventListener("change", (e) => {
-          document.getElementById("variants-section").style.display = e.target.checked ? "block" : "none";
+          const section = document.getElementById("variants-section");
+          if (section) {
+              section.classList.remove("hidden");
+              section.style.display = e.target.checked ? "block" : "none";
+          }
       });
   }
 
@@ -65,11 +69,11 @@ function generateVariants() {
                ${val}
             </td>
             <td class="px-4 py-2"><input type="text" class="v-sku premium-input !py-1 !text-xs" placeholder="SKU/Barcode"></td>
-            <td class="px-4 py-2 hidden"><input type="number" step="0.01" class="v-cost premium-input !py-1 !text-xs" value="${baseCost}"></td>
+            <td class="px-4 py-2"><input type="number" step="0.01" class="v-cost premium-input !py-1 !text-xs" value="${baseCost}" style="width:90px" placeholder="Cost"></td>
             <td class="px-4 py-2 hidden"><input type="number" class="v-stock premium-input !py-1 !text-xs" value="0" style="width:60px"></td>
-            <td class="px-4 py-2"><input type="number" step="0.01" class="v-price premium-input !py-1 !text-xs text-brand-green" value="${basePrice}" style="width:80px"></td>
+            <td class="px-4 py-2"><input type="number" step="0.01" class="v-price premium-input !py-1 !text-xs text-brand-green font-bold" value="${basePrice}" style="width:90px" placeholder="Price"></td>
             <td class="px-4 py-2"><input type="text" class="v-image premium-input !py-1 !text-xs" placeholder="Image URL"></td>
-            <td class="px-4 py-2"><button type="button" onclick="this.closest('tr').remove()" class="text-red-500 hover:text-red-700 font-bold">X</button></td>
+            <td class="px-4 py-2 text-center"><button type="button" onclick="this.closest('tr').remove()" class="text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded hover:bg-red-50">✕</button></td>
         `;
         tbody.appendChild(tr);
     });
