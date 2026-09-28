@@ -120,187 +120,245 @@
     }
   </style>
 
-  <!-- Language Switcher -->
-  <div class="language-switcher">
-    <button class="lang-btn" onclick="setLanguage('en')" id="langEn">English</button>
-    <button class="lang-btn" onclick="setLanguage('ar')" id="langAr">العربية</button>
-  </div>
-
   <div class="flex h-screen w-full overflow-hidden">
-    <!-- Sidebar -->
-    <aside class="w-64 bg-gradient-to-b from-brand-dark-2 to-brand-dark text-white flex flex-col shadow-2xl shrink-0 z-20">
-      <div class="sidebar-header">
-        <h2 id="posSystemTitle" data-i18n="app_title">🏪Tasgheel POS System</h2>
-        <p id="licensedVersion" data-i18n="enhanced_edition">Enterprise Edition</p>
+    <!-- Sidebar (Slimmed to ~220px for maximum POS workspace) -->
+    <aside class="w-[220px] bg-gradient-to-b from-brand-dark-2 to-brand-dark text-white flex flex-col shadow-2xl shrink-0 z-20">
+      <div class="p-4 border-b border-white/10">
+        <h2 id="posSystemTitle" class="text-sm font-black tracking-tight flex items-center gap-1.5" data-i18n="app_title">🏪 Tashgheel POS</h2>
+        <p id="licensedVersion" class="text-[10px] text-gray-400 mt-0.5" data-i18n="enhanced_edition">Enterprise Edition</p>
       </div>
-                              <nav class="flex-1 overflow-y-auto py-4">
-        <a href="pos.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-brand-blue bg-white/10 text-white" data-i18n="nav_pos">🛒 Point of Sale</a>
-        <a href="products.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_products">📦 Products</a>
-        <a href="inventory.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_inventory">📊 Inventory</a>
-        <a href="reconciliation.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_reconciliation">📋 Opening Reconciliation</a>
-        <a href="stock-transfer.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stock_transfer">🔄 Stock Transfer</a>
-        <a href="price-list.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_price_list">💰 Price List</a>
-        <a href="purchases.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_purchases">📥 Purchases</a>
-        <a href="receipts.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_receipts">🧾 Receipts</a>
-        <a href="reports.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_reports">📈 Reports</a>
-        <a href="suppliers.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_suppliers">🏢 Suppliers</a>
-        <a href="customers.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_customers">👥 Customers</a>
-        <a href="open-orders.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_open_orders">📝 Open Orders</a>
-        <a href="salesmen.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_salesmen">🧑‍💼 Salesmen</a>
-        <a href="expenses.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_expenses">📋 Expenses</a>
-        <a href="stores.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_stores">🏢 Warehouses</a>
-        <a href="admin.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_admin">⚙️ Admin Panel</a>
-        <a href="backup.html" class="flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 border-l-4 border-transparent hover:bg-white/5 hover:pl-7 text-gray-300 hover:text-white" data-i18n="nav_backup">💾 Backup</a>
+      <nav class="flex-1 overflow-y-auto py-2 custom-scrollbar">
+        <a href="pos.html" class="flex items-center px-4 py-2 text-xs font-semibold transition-all duration-150 border-l-4 border-brand-blue bg-white/10 text-white" data-i18n="nav_pos">🛒 Point of Sale</a>
+        <a href="products.html" class="flex items-center px-4 py-2 text-xs font-semibold transition-all duration-150 border-l-4 border-transparent hover:bg-white/5 hover:pl-5 text-gray-300 hover:text-white" data-i18n="nav_products">📦 Products</a>
+        <a href="inventory.html" class="flex items-center px-4 py-2 text-xs font-semibold transition-all duration-150 border-l-4 border-transparent hover:bg-white/5 hover:pl-5 text-gray-300 hover:text-white" data-i18n="nav_inventory">📊 Inventory</a>
+        <a href="reconciliation.html" class="flex items-center px-4 py-2 text-xs font-semibold transition-all duration-150 border-l-4 border-transparent hover:bg-white/5 hover:pl-5 text-gray-300 hover:text-white" data-i18n="nav_reconciliation">📋 Opening Reconciliation</a>
+        <a href="stock-transfer.html" class="flex items-center px-4 py-2 text-xs font-semibold transition-all duration-150 border-l-4 border-transparent hover:bg-white/5 hover:pl-5 text-gray-300 hover:text-white" data-i18n="nav_stock_transfer">🔄 Stock Transfer</a>
+        <a href="price-list.html" class="flex items-center px-4 py-2 text-xs font-semibold transition-all duration-150 border-l-4 border-transparent hover:bg-white/5 hover:pl-5 text-gray-300 hover:text-white" data-i18n="nav_price_list">💰 Price List</a>
+        <a href="purchases.html" class="flex items-center px-4 py-2 text-xs font-semibold transition-all duration-150 border-l-4 border-transparent hover:bg-white/5 hover:pl-5 text-gray-300 hover:text-white" data-i18n="nav_purchases">📥 Purchases</a>
+        <a href="receipts.html" class="flex items-center px-4 py-2 text-xs font-semibold transition-all duration-150 border-l-4 border-transparent hover:bg-white/5 hover:pl-5 text-gray-300 hover:text-white" data-i18n="nav_receipts">🧾 Receipts</a>
+        <a href="reports.html" class="flex items-center px-4 py-2 text-xs font-semibold transition-all duration-150 border-l-4 border-transparent hover:bg-white/5 hover:pl-5 text-gray-300 hover:text-white" data-i18n="nav_reports">📈 Reports</a>
+        <a href="suppliers.html" class="flex items-center px-4 py-2 text-xs font-semibold transition-all duration-150 border-l-4 border-transparent hover:bg-white/5 hover:pl-5 text-gray-300 hover:text-white" data-i18n="nav_suppliers">🏢 Suppliers</a>
+        <a href="customers.html" class="flex items-center px-4 py-2 text-xs font-semibold transition-all duration-150 border-l-4 border-transparent hover:bg-white/5 hover:pl-5 text-gray-300 hover:text-white" data-i18n="nav_customers">👥 Customers</a>
+        <a href="open-orders.html" class="flex items-center px-4 py-2 text-xs font-semibold transition-all duration-150 border-l-4 border-transparent hover:bg-white/5 hover:pl-5 text-gray-300 hover:text-white" data-i18n="nav_open_orders">📝 Open Orders</a>
+        <a href="salesmen.html" class="flex items-center px-4 py-2 text-xs font-semibold transition-all duration-150 border-l-4 border-transparent hover:bg-white/5 hover:pl-5 text-gray-300 hover:text-white" data-i18n="nav_salesmen">🧑‍💼 Salesmen</a>
+        <a href="expenses.html" class="flex items-center px-4 py-2 text-xs font-semibold transition-all duration-150 border-l-4 border-transparent hover:bg-white/5 hover:pl-5 text-gray-300 hover:text-white" data-i18n="nav_expenses">📋 Expenses</a>
+        <a href="stores.html" class="flex items-center px-4 py-2 text-xs font-semibold transition-all duration-150 border-l-4 border-transparent hover:bg-white/5 hover:pl-5 text-gray-300 hover:text-white" data-i18n="nav_stores">🏢 Warehouses</a>
+        <a href="admin.html" class="flex items-center px-4 py-2 text-xs font-semibold transition-all duration-150 border-l-4 border-transparent hover:bg-white/5 hover:pl-5 text-gray-300 hover:text-white" data-i18n="nav_admin">⚙️ Admin Panel</a>
+        <a href="backup.html" class="flex items-center px-4 py-2 text-xs font-semibold transition-all duration-150 border-l-4 border-transparent hover:bg-white/5 hover:pl-5 text-gray-300 hover:text-white" data-i18n="nav_backup">💾 Backup</a>
       </nav>
 
-      <div class="sidebar-footer">
-        <button class="btn btn-danger" onclick="confirmLogout()" id="logoutBtn" data-i18n="logout">Logout</button>
+      <div class="p-3 border-t border-white/10">
+        <button class="w-full py-2 px-3 text-xs font-bold text-red-200 bg-red-900/40 hover:bg-red-800/60 rounded-xl transition-colors flex items-center justify-center gap-1.5" onclick="confirmLogout()" id="logoutBtn" data-i18n="logout">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
       </div>
     </aside>
 
-    <!-- Main Content -->
+    <!-- Main Content Area -->
     <main class="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#f4f7f9] relative">
-      <header class="px-8 py-5 flex justify-between items-center z-10 sticky top-0">
-        <div class="relative w-96">
-          <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
-          <input type="search" id="productSearch" name="catalog_search_filter_pos" placeholder="Search products, code, barcode..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" readonly onfocus="this.removeAttribute('readonly');" onblur="this.setAttribute('readonly', 'readonly');" class="w-full pl-11 pr-10 py-3 rounded-xl border border-gray-200 shadow-sm focus:ring-2 focus:ring-brand-blue outline-none transition-all text-sm bg-white">
-          <button type="button" id="clearSearchBtn" onclick="clearProductSearch()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden p-1 focus:outline-none" title="Clear search">
-            <i class="fas fa-times-circle text-sm"></i>
-          </button>
+      <!-- Unified Header (Search + Store Context + Language) -->
+      <header class="px-4 py-2.5 flex justify-between items-center gap-3 z-10 sticky top-0 bg-white/95 backdrop-blur-md border-b border-gray-200/80 shadow-2xs shrink-0">
+        <!-- Search bar with Ctrl+K shortcut -->
+        <div class="relative flex-1 max-w-md lg:max-w-xl">
+          <i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+          <input type="search" id="productSearch" name="catalog_search_filter_pos" placeholder="Search products, SKU, barcode... (Ctrl + K)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" readonly onfocus="this.removeAttribute('readonly');" onblur="this.setAttribute('readonly', 'readonly');" class="w-full pl-9 pr-20 py-2 rounded-xl border border-gray-200 shadow-2xs focus:ring-2 focus:ring-brand-blue outline-none transition-all text-xs bg-white font-medium">
+          <div class="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+            <button type="button" id="clearSearchBtn" onclick="clearProductSearch()" class="text-gray-400 hover:text-gray-600 hidden p-1 focus:outline-none" title="Clear search">
+              <i class="fas fa-times-circle text-xs"></i>
+            </button>
+            <kbd class="hidden sm:inline-block px-1.5 py-0.5 text-[9px] font-bold text-gray-400 bg-gray-100 border border-gray-200 rounded tracking-wider">Ctrl+K</kbd>
+          </div>
         </div>
-        <div class="flex items-center gap-4">
-          <div class="flex items-center gap-2">
-            <select id="pos-warehouse-selector" class="px-3 py-2 rounded-xl border border-gray-200 text-sm font-medium bg-white text-gray-700 shadow-sm focus:ring-2 focus:ring-brand-blue outline-none">
+
+        <!-- Store Context & Header Actions -->
+        <div class="flex items-center gap-2.5 shrink-0">
+          <div class="flex items-center gap-2 bg-slate-50 border border-gray-200 rounded-xl px-3 py-1.5 shadow-2xs">
+            <i class="fas fa-warehouse text-brand-blue text-xs"></i>
+            <select id="pos-warehouse-selector" class="bg-transparent border-none text-xs font-bold text-slate-800 outline-none cursor-pointer focus:ring-0">
             </select>
             <div id="store-status-badge"></div>
           </div>
-          <button class="relative p-2 text-gray-500 hover:text-brand-dark transition-colors">
-            <i class="far fa-bell text-xl"></i>
-            <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#f4f7f9]"></span>
-          </button>
-          <button class="p-2 text-gray-500 hover:text-brand-dark transition-colors">
-            <i class="fas fa-sign-out-alt text-xl"></i>
+
+          <!-- Language Switcher (Integrated into Header) -->
+          <div class="language-switcher">
+            <button class="lang-btn" onclick="setLanguage('en')" id="langEn">EN</button>
+            <button class="lang-btn" onclick="setLanguage('ar')" id="langAr">عربي</button>
+          </div>
+
+          <button class="relative p-2 text-gray-500 hover:text-brand-dark transition-colors rounded-xl bg-slate-50 border border-gray-200 shadow-2xs" title="Notifications">
+            <i class="far fa-bell text-xs"></i>
+            <span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full"></span>
           </button>
         </div>
       </header>
 
-      <div id="readOnlyBanner" style="display:none;" class="bg-red-500 text-white p-2 text-center font-bold text-sm">
+      <!-- Read Only and Reconciliation Warning Banners -->
+      <div id="readOnlyBanner" style="display:none;" class="bg-red-500 text-white p-2 text-center font-bold text-xs shrink-0">
         ⚠️ Read-Only Mode: Shift opened by <span id="readOnlyUser"></span>
       </div>
-      <div id="posReconciliationBanner" style="display:none; background: linear-gradient(135deg, #b45309, #d97706); color: #ffffff;" class="mx-8 mb-4 p-3.5 rounded-2xl shadow-lg flex flex-wrap items-center justify-between gap-3 text-sm font-semibold z-10">
-        <div class="flex items-center gap-2.5">
-          <span class="text-xl">🔒</span>
+      <div id="posReconciliationBanner" style="display:none; background: linear-gradient(135deg, #b45309, #d97706); color: #ffffff;" class="mx-4 my-2 p-2.5 rounded-xl shadow-md flex flex-wrap items-center justify-between gap-2 text-xs font-semibold z-10 shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="text-base">🔒</span>
           <span id="posReconciliationBannerText">هذا الفرع مغلق حالياً لإجراء الجرد الافتتاحي (Opening Reconciliation). تم تعطيل عمليات البيع لحين اعتماد الجرد.</span>
         </div>
-        <div class="flex items-center gap-2">
-          <a href="reconciliation.html" class="px-3.5 py-1.5 bg-white text-amber-900 rounded-xl text-xs font-bold hover:bg-amber-50 shadow-sm transition-all flex items-center gap-1.5">
+        <div class="flex items-center gap-1.5">
+          <a href="reconciliation.html" class="px-2.5 py-1 bg-white text-amber-900 rounded-lg text-xs font-bold hover:bg-amber-50 shadow-xs transition-all flex items-center gap-1">
             <i class="fas fa-clipboard-check"></i> <span data-i18n="manage_reconciliation">إدارة واعتماد الجرد</span>
           </a>
-          <button id="posQuickCancelReconciliationBtn" onclick="quickUnlockReconciliationStore()" class="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5">
-            <i class="fas fa-unlock"></i> <span data-i18n="unlock_store_now">إلغاء الجرد وفك القفل فوراً</span>
+          <button id="posQuickCancelReconciliationBtn" onclick="quickUnlockReconciliationStore()" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1">
+            <i class="fas fa-unlock"></i> <span data-i18n="unlock_store_now">فك القفل فوراً</span>
           </button>
         </div>
       </div>
 
-      <section class="flex-1 min-h-0 px-8 pb-8 flex flex-col overflow-hidden">
+      <!-- MAIN POS WORKSPACE: Products (flex: 1) | Checkout Cart (~400px) -->
+      <section class="flex-1 min-h-0 p-3.5 flex flex-row gap-3.5 overflow-hidden">
         
-
-        <!-- POS Layout: Categories | Products | Cart -->
-        <div class="flex flex-1 min-h-0 w-full gap-8">
+        <!-- Products Area (flex: 1, Horizontal Categories + 4-Column Grid) -->
+        <div class="flex-1 flex flex-col min-w-0 bg-white rounded-2xl p-3.5 shadow-2xs border border-gray-200/80 overflow-hidden h-full">
           
-          <!-- Left Content Wrapper -->
-          <div class="flex-1 flex flex-col min-w-0 bg-white rounded-[24px] p-6 shadow-sm border border-gray-100 overflow-hidden">
-            <div class="flex justify-between items-center mb-6">
-              <h2 class="text-xl font-bold text-brand-dark" data-i18n="pos_title">Point of Sale</h2>
-              <div class="flex gap-2">
-                <button id="tabProducts" class="btn btn-primary" onclick="switchPosTab('products')" data-i18n="pos_products_tab">Products</button>
-                <button id="tabHeld" class="btn btn-secondary relative" onclick="switchPosTab('held')" data-i18n="pos_held_tab">
-                  Held Invoices
-                  <span id="heldCountBadge" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full text-[10px] w-5 h-5 flex items-center justify-center font-bold" style="display:none;">0</span>
-                </button>
-              </div>
+          <!-- Subheader: Title + Tab buttons -->
+          <div class="flex justify-between items-center mb-2 shrink-0">
+            <div class="flex items-center gap-2">
+              <h2 class="text-sm font-black text-slate-800 tracking-tight" data-i18n="pos_title">Point of Sale</h2>
             </div>
-            
-            <div class="flex flex-1 gap-6 min-h-0">
-              
-              <!-- Categories Grid (Left) -->
-              <div class="w-48 shrink-0 flex flex-col min-h-0">
-                <div id="categoryContainer" class="grid grid-cols-2 gap-3 overflow-y-auto pr-2 custom-scrollbar pb-6">
-                  <button class="flex flex-col items-center justify-center p-4 rounded-2xl border border-blue-100 bg-blue-50 text-blue-600 font-medium text-xs transition-all duration-200 category-btn active" onclick="filterProducts('all')" data-id="all">
-                    <i class="fas fa-layer-group text-xl mb-2"></i>
-                    <span>All</span>
-                  </button>
-                  <!-- Categories will be loaded here -->
-                </div>
-              </div>
-
-              <!-- Products Grid (Center) -->
-              <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-6">
-                <div class="grid gap-3.5" style="grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));" id="productGrid">
-                  <div class="col-span-full text-center py-12 text-gray-400 font-medium">
-                    <p id="loadingText" class="animate-pulse">Loading products...</p>
-                  </div>
-                </div>
-                <div id="heldOrdersGrid" class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); display:none;">
-                  <!-- Held items rendered here -->
-                </div>
-              </div>
+            <div class="flex gap-1.5">
+              <button id="tabProducts" class="btn btn-primary text-xs py-1.5 px-3" onclick="switchPosTab('products')" data-i18n="pos_products_tab">Products</button>
+              <button id="tabHeld" class="btn btn-secondary text-xs py-1.5 px-3 relative" onclick="switchPosTab('held')" data-i18n="pos_held_tab">
+                Held Invoices
+                <span id="heldCountBadge" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full text-[9px] w-4 h-4 flex items-center justify-center font-bold" style="display:none;">0</span>
+              </button>
             </div>
           </div>
 
-          <!-- Cart Panel (Right) -->
-          <div class="cart w-[360px] shrink-0 h-full overflow-y-auto bg-white rounded-[24px] shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-gray-100 flex flex-col p-6">
-            
-            <h3 class="text-xl font-bold text-brand-dark mb-6">Checkout cart</h3>
-            <p id="cartEmptyText" class="text-center text-gray-400 py-8 text-sm">Cart is empty</p>
-            <div id="cartItems" class="flex-1 overflow-y-auto flex flex-col gap-4 pr-2 custom-scrollbar">
+          <!-- HORIZONTAL CATEGORY PILL BAR (Directly above Products Grid) -->
+          <div id="categoryContainer" class="flex flex-row items-center gap-2 overflow-x-auto py-1 px-0.5 custom-scrollbar shrink-0 border-b border-gray-100 mb-2.5">
+            <button class="category-btn active shrink-0" onclick="filterProducts('all', this)" data-id="all">
+              <i class="fas fa-layer-group text-xs"></i>
+              <span>All</span>
+            </button>
+            <!-- Categories will be dynamically rendered here as horizontal pills -->
+          </div>
+
+          <!-- Products Grid (4 columns on standard desktop, scrollable inside) -->
+          <div class="flex-1 overflow-y-auto min-h-0 custom-scrollbar pr-1">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5" id="productGrid">
+              <div class="col-span-full text-center py-12 text-gray-400 font-medium">
+                <p id="loadingText" class="animate-pulse text-xs">Loading products...</p>
+              </div>
+            </div>
+            <div id="heldOrdersGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5" style="display:none;">
+              <!-- Held items rendered here -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Checkout Cart Panel (Fixed ~400px width, 100% viewport fit, zero page scroll) -->
+        <div class="cart w-[380px] lg:w-[400px] xl:w-[420px] shrink-0 h-full bg-white rounded-2xl shadow-2xs border border-gray-200/80 flex flex-col p-3.5 overflow-hidden">
+          
+          <!-- Cart Header: Title + Items Count + Selectors -->
+          <div class="shrink-0 pb-2.5 border-b border-gray-100 flex flex-col gap-2">
+            <div class="flex justify-between items-center">
+              <div class="flex items-center gap-1.5">
+                <span class="text-base">🛒</span>
+                <h3 class="text-sm font-black text-slate-900 tracking-tight" data-i18n="pos_checkout_title">CHECKOUT</h3>
+              </div>
+              <span id="cartCountBadge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100"><span id="cartCounter">0</span> items</span>
             </div>
 
-            <div class="mt-6 flex flex-col gap-3">
-              <!-- Essential hidden/subtle selects for JS -->
-              <div class="grid grid-cols-2 gap-2 mb-2">
-                <select id="orderTypeSelect" class="text-xs bg-gray-50 border border-gray-100 rounded-lg p-2" onchange="updateCartSummary()">
-                  <option value="instore" data-i18n="order_instore">In-Store</option>
-                  <option value="online" data-i18n="order_online">Online</option>
-                  <option value="delivery" data-i18n="order_delivery">Delivery</option>
-                </select>
-                <select id="customerSelect" class="text-xs bg-gray-50 border border-gray-100 rounded-lg p-2"><option value="" data-i18n="select_customer_placeholder">Customer...</option></select>
-                <select id="salesmanSelect" class="text-xs bg-gray-50 border border-gray-100 rounded-lg p-2 col-span-2"><option value="" data-i18n="select_salesman_placeholder">Salesman...</option></select>
-              </div>
+            <!-- Customer & Order Type Selectors (Compact Grid) -->
+            <div class="grid grid-cols-2 gap-1.5">
+              <select id="orderTypeSelect" class="text-xs font-semibold bg-slate-50 border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-brand-blue" onchange="updateCartSummary()">
+                <option value="instore" data-i18n="order_instore">🏬 In-Store</option>
+                <option value="online" data-i18n="order_online">🌐 Online</option>
+                <option value="delivery" data-i18n="order_delivery">🛵 Delivery</option>
+              </select>
+              <select id="customerSelect" class="text-xs font-semibold bg-slate-50 border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-brand-blue">
+                <option value="" data-i18n="select_customer_placeholder">👤 Customer...</option>
+              </select>
+              <select id="salesmanSelect" class="text-xs font-semibold bg-slate-50 border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-brand-blue col-span-2">
+                <option value="" data-i18n="select_salesman_placeholder">👔 Salesman...</option>
+              </select>
+            </div>
+          </div>
 
-              <div class="flex justify-between text-sm text-gray-500 font-medium"><span data-i18n="subtotal">Subtotal</span> <span id="cartSubtotal" class="text-brand-dark">$0.00</span></div>
-              <div class="flex justify-between text-sm text-gray-500 font-medium items-center">
-                <span class="flex items-center gap-1 cursor-pointer hover:text-brand-blue transition-colors" onclick="openDiscountModal()"><span data-i18n="discount">Discount</span> <i class="fas fa-edit text-[10px]"></i></span> 
-                <span id="cartDiscount" class="text-brand-dark">$0.00</span>
-              </div>
-              <div class="flex justify-between text-sm text-gray-500 font-medium items-center">
-                <span><input type="checkbox" id="taxCheckbox" onchange="updateCartSummary()" class="mr-2 rounded text-brand-blue border-gray-300 focus:ring-brand-blue"><span data-i18n="tax" id="taxLabel">Tax</span></span>
-                <span id="cartTax" class="text-brand-dark">$0.00</span>
-              </div>
-              
-              <div class="h-px bg-gray-100 my-2"></div>
-              
-              <div class="flex justify-between items-center text-2xl font-extrabold text-brand-dark mb-6">
-                <span data-i18n="total">Total</span>
-                <span id="cartTotal">$0.00</span>
-              </div>
+          <!-- Cart Items (THE ONLY SCROLLABLE AREA IN CART) -->
+          <div class="flex-1 overflow-y-auto py-2 pr-1 custom-scrollbar min-h-0 flex flex-col gap-1.5" id="cartScrollContainer">
+            <div id="cartEmptyText" class="flex flex-col items-center justify-center h-full py-8 text-gray-400">
+              <i class="fas fa-shopping-basket text-3xl mb-2 opacity-30"></i>
+              <p class="text-xs font-semibold" data-i18n="cart_empty">Cart is empty</p>
+              <small class="text-[11px] text-gray-400" data-i18n="click_product_add">Click a product card to add</small>
+            </div>
+            <div id="cartItems" class="flex flex-col gap-1.5">
+            </div>
+          </div>
 
-              <!-- Payment Buttons (Stacked like Image 1) -->
-              <div class="flex flex-col gap-3">
-                <button class="w-full py-4 rounded-xl font-bold text-white bg-[#1877f2] hover:bg-blue-600 transition-all shadow-md shadow-blue-500/20" onclick="processSale('cash')" id="cashBtn" data-i18n="pay_cash">Cash</button>
-                <button class="w-full py-4 rounded-xl font-bold text-white bg-[#1877f2] hover:bg-blue-600 transition-all shadow-md shadow-blue-500/20" onclick="processSale('card')" id="cardBtn" data-i18n="pay_card">Card</button>
-                <button class="w-full py-4 rounded-xl font-bold text-white bg-[#1877f2] hover:bg-blue-600 transition-all shadow-md shadow-blue-500/20" onclick="processSale('mobile')" id="mobileBtn" data-i18n="pay_mobile">Mobile</button>
+          <!-- Pinned Bottom Section: Summary + Grand Total + Payments (Guaranteed viewport fit) -->
+          <div class="shrink-0 pt-2.5 border-t border-gray-100 flex flex-col gap-2 bg-white">
+            
+            <!-- Summary calculations -->
+            <div class="flex flex-col gap-1 text-[11px] text-gray-600 font-medium px-0.5">
+              <div class="flex justify-between items-center">
+                <span data-i18n="subtotal">Subtotal</span>
+                <span id="cartSubtotal" class="font-bold text-slate-800 font-mono">0.00 ج.م</span>
               </div>
+              <div class="flex justify-between items-center">
+                <span class="flex items-center gap-1 cursor-pointer hover:text-brand-blue transition-colors" onclick="openDiscountModal()">
+                  <span data-i18n="discount">Discount</span>
+                  <i class="fas fa-edit text-[9px] text-blue-500"></i>
+                </span>
+                <span id="cartDiscount" class="font-bold text-emerald-600 font-mono">0.00 ج.م</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <label class="flex items-center gap-1 cursor-pointer">
+                  <input type="checkbox" id="taxCheckbox" onchange="updateCartSummary()" class="rounded text-brand-blue border-gray-300 focus:ring-brand-blue w-3 h-3">
+                  <span data-i18n="tax" id="taxLabel">Tax</span>
+                </label>
+                <span id="cartTax" class="font-bold text-slate-800 font-mono">0.00 ج.م</span>
+              </div>
+            </div>
 
-              <!-- Utilities -->
-              <div class="grid grid-cols-2 gap-2 mt-2">
-                <button class="py-2 text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all" onclick="processSale('credit')" id="creditBtn" data-i18n="credit_btn">Credit</button>
-                <button class="py-2 text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all" onclick="openSplitPaymentModal()" id="splitBtn" data-i18n="pay_split">Split</button>
-                <button class="py-2 text-xs font-bold text-orange-500 bg-orange-50 hover:bg-orange-100 rounded-lg transition-all" onclick="holdTransaction()" id="holdBtn" data-i18n="hold_btn">Hold</button>
-                <button class="py-2 text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 rounded-lg transition-all" onclick="clearCart()" id="clearCartBtn" data-i18n="clear_btn">Clear</button>
-                <button class="col-span-2 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-all" onclick="createLayawayFromPOS()" id="layawayBtn" data-i18n="pos_layaway_btn">📝 Save as Layaway</button>
-                <button class="col-span-2 py-3 text-sm font-bold text-red-600 bg-red-100 hover:bg-red-200 rounded-xl transition-all mt-2" onclick="closeShift()" id="closeShiftBtn" data-i18n="close_shift_now">Close Shift</button>
+            <!-- Grand Total Box (Clean single line, prominent but compact) -->
+            <div class="pos-total-banner">
+              <div>
+                <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-300 block" data-i18n="total">TOTAL DUE</span>
+                <span class="text-[9px] text-slate-400 font-medium leading-none">Grand Total</span>
               </div>
+              <span id="cartTotal" class="text-xl sm:text-2xl font-black text-emerald-400 tracking-tight font-mono">0.00 ج.م</span>
+            </div>
+
+            <!-- Payment Buttons (Retail Priority: CASH / CARD / MOBILE) -->
+            <div class="pos-payment-primary-grid">
+              <button class="pos-btn-cash" onclick="processSale('cash')" id="cashBtn" data-i18n="pay_cash">
+                <i class="fas fa-money-bill-wave text-xs"></i>
+                <span>Cash</span>
+              </button>
+              <button class="pos-btn-card" onclick="processSale('card')" id="cardBtn" data-i18n="pay_card">
+                <i class="fas fa-credit-card text-xs"></i>
+                <span>Card</span>
+              </button>
+              <button class="pos-btn-mobile" onclick="processSale('mobile')" id="mobileBtn" data-i18n="pay_mobile">
+                <i class="fas fa-mobile-alt text-xs"></i>
+                <span>Mobile</span>
+              </button>
+            </div>
+
+            <!-- Secondary Actions: CREDIT | SPLIT | HOLD | CLEAR -->
+            <div class="pos-payment-secondary-grid">
+              <button class="pos-btn-secondary text-slate-700 bg-slate-100 hover:bg-slate-200" onclick="processSale('credit')" id="creditBtn" data-i18n="credit_btn">Credit</button>
+              <button class="pos-btn-secondary text-slate-700 bg-slate-100 hover:bg-slate-200" onclick="openSplitPaymentModal()" id="splitBtn" data-i18n="pay_split">Split</button>
+              <button class="pos-btn-secondary text-amber-700 bg-amber-50 hover:bg-amber-100" onclick="holdTransaction()" id="holdBtn" data-i18n="hold_btn">Hold</button>
+              <button class="pos-btn-secondary text-rose-700 bg-rose-50 hover:bg-rose-100" onclick="clearCart()" id="clearCartBtn" data-i18n="clear_btn">Clear</button>
+            </div>
+
+            <!-- Layaway & Close Shift -->
+            <div class="pos-payment-footer-grid">
+              <button class="pos-btn-footer text-blue-700 bg-blue-50 hover:bg-blue-100" onclick="createLayawayFromPOS()" id="layawayBtn" data-i18n="pos_layaway_btn">
+                <span>📝 Layaway</span>
+              </button>
+              <button class="pos-btn-footer text-red-600 bg-red-50 hover:bg-red-100" onclick="closeShift()" id="closeShiftBtn" data-i18n="close_shift_now">
+                <span>🔒 Close Shift</span>
+              </button>
             </div>
           </div>
         </div>

@@ -17,6 +17,7 @@
  */
 
 const prisma = require('../prisma');
+const { resolveVariant, getCanonicalVariantId, getVariantCandidateIds } = require('./variantResolver');
 
 /**
  * Helper to get the start of the current day (UTC/Local)
@@ -239,31 +240,49 @@ async function getAvailableQuantity(tenantId, storeId, productId, variantId = nu
         })
     ]);
 
-    let candidateIds = null;
+    let variantStock = null;
     if (variantId) {
-        candidateIds = [String(variantId)];
+        let matched = null;
         if (product?.hasVariants && Array.isArray(product.variants)) {
-            const matched = product.variants.find(v =>
-                String(v.id) === String(variantId) ||
-                String(v._id) === String(variantId) ||
-                v.sku === String(variantId) ||
-                v.barcode === String(variantId)
-            );
-            if (matched) {
-                candidateIds = [matched.id, matched._id, matched.sku, matched.barcode, variantId].filter(Boolean).map(String);
-            }
+            matched = resolveVariant(product.variants, variantId, {
+                productId: product.id,
+                productName: product.name
+            });
         }
-    }
+        const canonicalId = matched ? getCanonicalVariantId(matched) : String(variantId);
+        variantStock = await db.variantStock.findFirst({
+            where: {
+                tenantId,
+                storeId: String(storeId),
+                productId: String(productId),
+                variantId: canonicalId
+            },
+            select: { quantity: true, minStock: true }
+        });
 
-    const variantStock = await db.variantStock.findFirst({
-        where: {
-            tenantId,
-            storeId: String(storeId),
-            productId: String(productId),
-            variantId: candidateIds ? { in: candidateIds } : null
-        },
-        select: { quantity: true, minStock: true }
-    });
+        const candidateIds = getVariantCandidateIds(matched, variantId);
+        if (!variantStock && candidateIds.length > 1) {
+            variantStock = await db.variantStock.findFirst({
+                where: {
+                    tenantId,
+                    storeId: String(storeId),
+                    productId: String(productId),
+                    variantId: { in: candidateIds }
+                },
+                select: { quantity: true, minStock: true }
+            });
+        }
+    } else {
+        variantStock = await db.variantStock.findFirst({
+            where: {
+                tenantId,
+                storeId: String(storeId),
+                productId: String(productId),
+                variantId: null
+            },
+            select: { quantity: true, minStock: true }
+        });
+    }
 
     const isTracked = product?.trackStock !== false;
     const storeLocked = Boolean(store?.isReconciling);

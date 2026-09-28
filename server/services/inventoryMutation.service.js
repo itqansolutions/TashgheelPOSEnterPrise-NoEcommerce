@@ -14,6 +14,7 @@
 
 const prisma = require('../prisma');
 const { acquireStoreInventoryLock, acquireMultiStoreInventoryLocks } = require('./inventoryLock.service');
+const { resolveVariant, getCanonicalVariantId, getVariantCandidateIds } = require('./variantResolver');
 
 /**
  * Execute a batch of inventory mutations for a single store inside a Prisma transaction.
@@ -118,56 +119,57 @@ async function executeMutation(tx, params) {
             continue;
         }
 
-        // If product does not track stock, activate trackStock for physical intake
+        // If product does not track stock, skip mutating inventory (preserve Product Master Data)
         if (product.trackStock === false) {
-            if (referenceType === 'PURCHASE' || referenceType === 'ADJUSTMENT' || referenceType === 'OPENING_BALANCE') {
-                await tx.product.update({
-                    where: { id: product.id },
-                    data: { trackStock: true }
-                });
-                product.trackStock = true;
-            } else {
-                continue;
-            }
+            continue;
         }
 
-        // Standardize targetVariantId with multi-field alias matching
+        // Standardize targetVariantId with strict hierarchical resolver
         let targetVariantId = null;
         let matchedVariant = null;
 
         if (product.hasVariants && Array.isArray(product.variants) && product.variants.length > 0) {
-            const vKey = item.variantId ? String(item.variantId) : null;
-            const codeToSearch = item.barcode || item.code || null;
-
-            matchedVariant = product.variants.find(v =>
-                (vKey && (String(v.id) === vKey || String(v._id) === vKey || v.sku === vKey || v.barcode === vKey)) ||
-                (codeToSearch && (v.barcode === codeToSearch || v.sku === codeToSearch))
-            ) || null;
-
-            if (matchedVariant) {
-                targetVariantId = String(matchedVariant.id || matchedVariant._id || matchedVariant.sku || matchedVariant.barcode || vKey);
-            } else if (vKey) {
-                targetVariantId = vKey;
+            const vQuery = item.variantId || item.barcode || item.code || item.sku || null;
+            if (vQuery) {
+                matchedVariant = resolveVariant(product.variants, vQuery, {
+                    productId: product.id,
+                    productName: product.name
+                });
+                if (matchedVariant) {
+                    targetVariantId = getCanonicalVariantId(matchedVariant);
+                } else if (item.variantId) {
+                    targetVariantId = String(item.variantId);
+                }
             }
         } else if (item.variantId) {
             targetVariantId = String(item.variantId);
         }
 
-        // Find existing VariantStock row (supporting aliases)
+        // Find existing VariantStock row
         let existingStock = null;
         if (targetVariantId) {
-            const candidateIds = matchedVariant
-                ? [matchedVariant.id, matchedVariant._id, matchedVariant.sku, matchedVariant.barcode, targetVariantId].filter(Boolean).map(String)
-                : [targetVariantId];
-
+            // Check canonical targetVariantId first (fast, unique index lookup)
             existingStock = await tx.variantStock.findFirst({
                 where: {
                     tenantId,
                     storeId,
                     productId: product.id,
-                    variantId: { in: candidateIds }
+                    variantId: targetVariantId
                 }
             });
+
+            // If not found by canonical ID and alternate candidate aliases exist, fallback to candidate search
+            const candidateIds = getVariantCandidateIds(matchedVariant, targetVariantId);
+            if (!existingStock && candidateIds.length > 1) {
+                existingStock = await tx.variantStock.findFirst({
+                    where: {
+                        tenantId,
+                        storeId,
+                        productId: product.id,
+                        variantId: { in: candidateIds }
+                    }
+                });
+            }
         } else {
             existingStock = await tx.variantStock.findFirst({
                 where: {
@@ -239,7 +241,7 @@ async function executeMutation(tx, params) {
         recordedMovements.push(movement);
 
         // 6. Dual-Write Legacy Cache Synchronization
-        if (!skipLegacySync && product) {
+        if (!skipLegacySync && product && product.trackStock !== false) {
             // Update stores array
             const stores = Array.isArray(product.stores) ? [...product.stores] : [];
             const storeIdx = stores.findIndex(s => String(s.storeId) === String(storeId));
@@ -252,10 +254,7 @@ async function executeMutation(tx, params) {
             // Update variants array if variantId is matched
             const variants = Array.isArray(product.variants) ? [...product.variants] : [];
             if (targetVariantId && product.hasVariants) {
-                const candidateIds = matchedVariant
-                    ? [matchedVariant.id, matchedVariant._id, matchedVariant.sku, matchedVariant.barcode, targetVariantId].filter(Boolean).map(String)
-                    : [targetVariantId];
-
+                const candidateIds = getVariantCandidateIds(matchedVariant, targetVariantId);
                 const vIdx = variants.findIndex(v =>
                     candidateIds.includes(String(v.id)) ||
                     candidateIds.includes(String(v._id)) ||
@@ -274,28 +273,12 @@ async function executeMutation(tx, params) {
             // Recalculate global stock
             const newGlobalStock = stores.reduce((sum, s) => sum + (Number(s.stock) || 0), 0);
 
-            // Calculate weighted average cost if this is a PURCHASE
-            let updatedCost = product.cost;
-            if (referenceType === 'PURCHASE' && item.unitCost !== undefined && item.unitCost !== null) {
-                const oldStock = Math.max(0, quantityBefore);
-                const newQty = finalDelta;
-                const newCost = Number(item.unitCost) || 0;
-                const oldCost = Number(product.cost) || 0;
-                if (oldStock + newQty > 0) {
-                    updatedCost = ((oldStock * oldCost) + (newQty * newCost)) / (oldStock + newQty);
-                } else {
-                    updatedCost = newCost;
-                }
-            }
-
             await tx.product.update({
                 where: { id: product.id },
                 data: {
                     stores,
                     variants,
-                    stock: newGlobalStock,
-                    cost: updatedCost,
-                    trackStock: true
+                    stock: newGlobalStock
                 }
             });
         }

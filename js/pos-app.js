@@ -715,6 +715,21 @@ function bindSearchOnce() {
       }
     });
     el.dataset.bound = "1";
+
+    if (!window._posCtrlKBound) {
+      window.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+          e.preventDefault();
+          const searchInput = document.getElementById("productSearch");
+          if (searchInput) {
+            searchInput.removeAttribute("readonly");
+            searchInput.focus();
+            searchInput.select();
+          }
+        }
+      });
+      window._posCtrlKBound = true;
+    }
   }
 }
 
@@ -1194,7 +1209,7 @@ function updateCartSummary() {
       const taxLabel = document.getElementById('taxLabel');
       if (taxLabel) taxLabel.textContent = `${taxName} (${taxRate}%):`;
     }
-    if (cartTotal) cartTotal.textContent = "Total: 0.00 ج.م";
+    if (cartTotal) cartTotal.textContent = "0.00 ج.م";
     disableActionButtons(true);
     return;
   }
@@ -1213,19 +1228,20 @@ function updateCartSummary() {
 
     subtotal += item.price * item.qty;
     const div = document.createElement("div");
-    div.className = "cart-item";
+    div.className = "cart-item bg-slate-50 hover:bg-blue-50/40 border border-slate-200/80 rounded-xl p-2 transition-colors flex justify-between items-center gap-2";
     const variantBadge = item.variantTitle 
-      ? `<span class="variant-pill text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded px-1.5 py-0.5 ml-1 mr-1">${item.variantTitle}</span>` 
+      ? `<span class="variant-pill text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 rounded px-1.5 py-0.2 ml-1 mr-1">${item.variantTitle}</span>` 
       : '';
     div.innerHTML = `
-      <div>
-        <strong>${item.name}</strong>${variantBadge}<br>
-        <div style="display:flex;align-items:center;">
-           <small>${item.price.toFixed(2)} x <span onclick="editCartItemQty(${index})" style="cursor:pointer;border-bottom:1px dashed #333;font-weight:bold;" title="Click to edit quantity">${item.qty.toFixed(2)}</span></small>
+      <div class="flex-1 min-w-0">
+        <div class="font-bold text-slate-800 text-xs truncate" title="${item.name}">${item.name}${variantBadge}</div>
+        <div class="flex items-center gap-1.5 mt-0.5 text-[11px] text-gray-500">
+           <span class="font-mono">${item.price.toFixed(2)} ×</span>
+           <span onclick="editCartItemQty(${index})" class="px-1.5 py-0.2 rounded bg-white border border-gray-300 font-bold text-slate-800 cursor-pointer hover:border-brand-blue" title="Click to edit quantity">${item.qty.toFixed(2)}</span>
            
            <div class="timer-controls">
              <button class="timer-btn ${item.isRunning ? 'stop' : 'start'}" onclick="toggleItemTimer(${index})">
-               ${item.isRunning ? '⏹ Stop' : '▶ Start'}
+               ${item.isRunning ? '⏹' : '▶'}
              </button>
              <span class="timer-display" id="timer-${index}">
                ${formatDuration(item.accumulatedTime + (item.isRunning ? (Date.now() - item.lastStartTime) : 0))}
@@ -1233,9 +1249,11 @@ function updateCartSummary() {
            </div>
         </div>
       </div>
-      <div>
-        <span>${(item.price * item.qty).toFixed(2)}</span>
-        <button onclick="removeFromCart(${index})" class="btn-danger" style="padding:2px 6px;margin-left:5px;">x</button>
+      <div class="flex items-center gap-1.5 shrink-0">
+        <span class="font-black text-slate-900 font-mono text-xs">${(item.price * item.qty).toFixed(2)}</span>
+        <button onclick="removeFromCart(${index})" class="w-6 h-6 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center transition-colors cursor-pointer text-[10px]" title="Remove item">
+          <i class="fas fa-trash-alt"></i>
+        </button>
       </div>
     `;
     cartItemsContainer.appendChild(div);
@@ -1298,7 +1316,7 @@ function updateCartSummary() {
     cartTax.textContent = taxAmount.toFixed(2) + " ج.م";
     // Redundant label update removed, handled above
   }
-  if (cartTotal) cartTotal.textContent = "Total: " + finalTotal.toFixed(2) + " ج.م";
+  if (cartTotal) cartTotal.textContent = `${finalTotal.toFixed(2)} ج.م`;
 
   // Persist for processing
   window.currentTransactionTax = taxAmount;
@@ -1945,7 +1963,7 @@ function renderCategories(categories) {
 
   categories.forEach(cat => {
     const btn = document.createElement('button');
-    btn.className = 'category-btn';
+    btn.className = 'category-btn shrink-0';
     btn.dataset.id = cat.name;
 
     const nameLower = cat.name.toLowerCase();
@@ -1956,7 +1974,7 @@ function renderCategories(categories) {
     const displayName = lang === 'ar' ? cat.name : (cat.nameEn || cat.name);
 
     btn.innerHTML = `
-      <i class="fas ${iconClass} text-xl mb-2"></i>
+      <i class="fas ${iconClass} text-xs"></i>
       <span>${displayName}</span>
     `;
 
@@ -1967,30 +1985,20 @@ function renderCategories(categories) {
 
 function filterProducts(categoryName, btnClicked) {
   const buttons = document.querySelectorAll('.category-btn');
-  buttons.forEach(btn => {
-    btn.classList.remove('active');
-    btn.classList.remove('btn-primary');
-    btn.classList.add('btn-secondary');
-  });
+  buttons.forEach(btn => btn.classList.remove('active'));
 
   if (btnClicked) {
     btnClicked.classList.add('active');
-    btnClicked.classList.remove('btn-secondary');
-    btnClicked.classList.add('btn-primary');
   } else {
     // Try to find button by name if passed manually
     const targetBtn = document.querySelector(`.category-btn[data-id="${categoryName}"]`);
     if (targetBtn) {
       targetBtn.classList.add('active');
-      targetBtn.classList.remove('btn-secondary');
-      targetBtn.classList.add('btn-primary');
     } else {
       // Fallback for 'all'
       const allBtn = document.querySelector('.category-btn[data-id="all"]');
       if (allBtn && categoryName === 'all') {
         allBtn.classList.add('active');
-        allBtn.classList.remove('btn-secondary');
-        allBtn.classList.add('btn-primary');
       }
     }
   }
