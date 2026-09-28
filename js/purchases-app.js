@@ -64,11 +64,24 @@ async function loadStores() {
         
         const select = document.getElementById('purchaseStore');
         select.innerHTML = '<option value="">-- Select Warehouse --</option>';
+        
+        const activeStore = (window.StoreContext ? window.StoreContext.getActiveStoreId() : null) || localStorage.getItem('pos_selected_store');
+
         stores.forEach(s => {
             const opt = document.createElement('option');
             opt.value = s.id;
-            opt.textContent = s.name;
+            opt.textContent = s.isReconciling ? `🔒 ${s.name} (قيد الجرد)` : s.name;
+            if (activeStore && String(s.id) === String(activeStore)) {
+                opt.selected = true;
+            }
             select.appendChild(opt);
+        });
+
+        select.addEventListener('change', (e) => {
+            if (e.target.value) {
+                if (window.StoreContext) window.StoreContext.setActiveStoreId(e.target.value, 'purchasesSelector');
+                else localStorage.setItem('pos_selected_store', e.target.value);
+            }
         });
     } catch (err) {
         console.error(err);
@@ -228,7 +241,7 @@ function addToPurchaseCart(productId, variantId = null) {
         purchaseCart.push({
             itemKey,
             productId: prod.id,
-            variantId: variantObj ? String(variantObj.id || variantObj._id || '') : null,
+            variantId: variantObj ? String(variantObj.id || variantObj._id || variantObj.sku || variantObj.barcode || '') : null,
             barcode: itemBarcode,
             name: itemName,
             qty: 1,
@@ -333,11 +346,19 @@ async function submitPurchase() {
         });
 
         if (res.ok) {
-            alert('✅ تم حفظ فاتورة المشتريات وإيداع المخزون بنجاح!');
+            const storeObj = stores.find(s => String(s.id) === String(storeId));
+            const storeName = storeObj ? storeObj.name : 'المخزن المحدد';
+            
+            // Sync active store context so inventory and POS immediately reflect this store!
+            if (window.StoreContext) window.StoreContext.setActiveStoreId(storeId, 'purchaseSuccess');
+            else localStorage.setItem('pos_selected_store', storeId);
+
+            alert(`✅ تم حفظ فاتورة المشتريات وإيداع المخزون بنجاح في (${storeName})!`);
             purchaseCart = [];
             document.getElementById('cashPaid').value = 0;
             renderPurchaseCart();
             loadSuppliers(); 
+            loadProducts();
             loadRecentPurchases();
         } else {
             const err = await res.json();

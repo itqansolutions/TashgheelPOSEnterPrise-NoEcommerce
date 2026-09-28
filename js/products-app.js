@@ -119,11 +119,10 @@ function renderProductTable(products) {
       
       const vsList = Array.isArray(p.variantStocks) ? p.variantStocks : [];
       let totalStock = 0;
-      if (p.hasVariants) {
+      if (vsList.length > 0) {
           totalStock = vsList.reduce((sum, vs) => sum + Number(vs.quantity || 0), 0);
       } else {
-          const vs = vsList.find(s => !s.variantId);
-          totalStock = vs ? Number(vs.quantity || 0) : 0;
+          totalStock = Number(p.stock || 0);
       }
 
       const hasVarBadge = p.hasVariants 

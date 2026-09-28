@@ -118,34 +118,66 @@ async function executeMutation(tx, params) {
             continue;
         }
 
-        // If product does not track stock, skip mutating inventory
+        // If product does not track stock, activate trackStock for physical intake
         if (product.trackStock === false) {
-            continue;
+            if (referenceType === 'PURCHASE' || referenceType === 'ADJUSTMENT' || referenceType === 'OPENING_BALANCE') {
+                await tx.product.update({
+                    where: { id: product.id },
+                    data: { trackStock: true }
+                });
+                product.trackStock = true;
+            } else {
+                continue;
+            }
         }
 
-        // Standardize targetVariantId
+        // Standardize targetVariantId with multi-field alias matching
         let targetVariantId = null;
-        if (item.variantId) {
-            targetVariantId = String(item.variantId);
-        } else if (product.hasVariants && (item.barcode || item.code)) {
-            const codeToSearch = item.barcode || item.code;
-            const matchedV = Array.isArray(product.variants)
-                ? product.variants.find(v => v.barcode === codeToSearch || v.sku === codeToSearch)
-                : null;
-            if (matchedV) {
-                targetVariantId = String(matchedV.id || matchedV._id);
+        let matchedVariant = null;
+
+        if (product.hasVariants && Array.isArray(product.variants) && product.variants.length > 0) {
+            const vKey = item.variantId ? String(item.variantId) : null;
+            const codeToSearch = item.barcode || item.code || null;
+
+            matchedVariant = product.variants.find(v =>
+                (vKey && (String(v.id) === vKey || String(v._id) === vKey || v.sku === vKey || v.barcode === vKey)) ||
+                (codeToSearch && (v.barcode === codeToSearch || v.sku === codeToSearch))
+            ) || null;
+
+            if (matchedVariant) {
+                targetVariantId = String(matchedVariant.id || matchedVariant._id || matchedVariant.sku || matchedVariant.barcode || vKey);
+            } else if (vKey) {
+                targetVariantId = vKey;
             }
+        } else if (item.variantId) {
+            targetVariantId = String(item.variantId);
         }
 
-        // Find existing VariantStock row
-        const existingStock = await tx.variantStock.findFirst({
-            where: {
-                tenantId,
-                storeId,
-                productId: product.id,
-                variantId: targetVariantId
-            }
-        });
+        // Find existing VariantStock row (supporting aliases)
+        let existingStock = null;
+        if (targetVariantId) {
+            const candidateIds = matchedVariant
+                ? [matchedVariant.id, matchedVariant._id, matchedVariant.sku, matchedVariant.barcode, targetVariantId].filter(Boolean).map(String)
+                : [targetVariantId];
+
+            existingStock = await tx.variantStock.findFirst({
+                where: {
+                    tenantId,
+                    storeId,
+                    productId: product.id,
+                    variantId: { in: candidateIds }
+                }
+            });
+        } else {
+            existingStock = await tx.variantStock.findFirst({
+                where: {
+                    tenantId,
+                    storeId,
+                    productId: product.id,
+                    variantId: null
+                }
+            });
+        }
 
         const currentQuantity = existingStock ? Number(existingStock.quantity) : 0;
         let finalDelta = 0;
@@ -207,7 +239,7 @@ async function executeMutation(tx, params) {
         recordedMovements.push(movement);
 
         // 6. Dual-Write Legacy Cache Synchronization
-        if (!skipLegacySync && product && product.trackStock !== false) {
+        if (!skipLegacySync && product) {
             // Update stores array
             const stores = Array.isArray(product.stores) ? [...product.stores] : [];
             const storeIdx = stores.findIndex(s => String(s.storeId) === String(storeId));
@@ -220,9 +252,22 @@ async function executeMutation(tx, params) {
             // Update variants array if variantId is matched
             const variants = Array.isArray(product.variants) ? [...product.variants] : [];
             if (targetVariantId && product.hasVariants) {
-                const vIdx = variants.findIndex(v => String(v.id) === targetVariantId || String(v._id) === targetVariantId);
+                const candidateIds = matchedVariant
+                    ? [matchedVariant.id, matchedVariant._id, matchedVariant.sku, matchedVariant.barcode, targetVariantId].filter(Boolean).map(String)
+                    : [targetVariantId];
+
+                const vIdx = variants.findIndex(v =>
+                    candidateIds.includes(String(v.id)) ||
+                    candidateIds.includes(String(v._id)) ||
+                    candidateIds.includes(String(v.sku)) ||
+                    candidateIds.includes(String(v.barcode))
+                );
+
                 if (vIdx >= 0) {
                     variants[vIdx].stock = (Number(variants[vIdx].stock) || 0) + finalDelta;
+                    if (!variants[vIdx].id && targetVariantId) {
+                        variants[vIdx].id = targetVariantId;
+                    }
                 }
             }
 
@@ -249,7 +294,8 @@ async function executeMutation(tx, params) {
                     stores,
                     variants,
                     stock: newGlobalStock,
-                    cost: updatedCost
+                    cost: updatedCost,
+                    trackStock: true
                 }
             });
         }

@@ -1035,11 +1035,12 @@ window.selectVariant = function(productId, variantIdentifier) {
 
     const variantStocksList = Array.isArray(product.variantStocks) ? product.variantStocks : [];
     const selectedStoreId = (window.StoreContext ? window.StoreContext.getActiveStoreId() : null) || document.getElementById('pos-warehouse-selector')?.value || localStorage.getItem('pos_selected_store');
+    const candidateIds = [variant.id, variant._id, variant.sku, variant.barcode].filter(Boolean).map(String);
     let vs = null;
     if (selectedStoreId) {
-      vs = variantStocksList.find(s => String(s.variantId) === String(variant.id) && s.storeId && String(s.storeId) === String(selectedStoreId));
+      vs = variantStocksList.find(s => candidateIds.includes(String(s.variantId)) && s.storeId && String(s.storeId) === String(selectedStoreId));
     } else {
-      vs = variantStocksList.find(s => String(s.variantId) === String(variant.id));
+      vs = variantStocksList.find(s => candidateIds.includes(String(s.variantId)));
     }
     const vStock = vs ? (Number(vs.quantity) || 0) : 0;
 
@@ -1088,11 +1089,12 @@ function addToCart(product) {
           
           const variantStocksList = Array.isArray(product.variantStocks) ? product.variantStocks : [];
           const selectedStoreId = (window.StoreContext ? window.StoreContext.getActiveStoreId() : null) || document.getElementById('pos-warehouse-selector')?.value || localStorage.getItem('pos_selected_store');
+          const candidateVIds = [v.id, v._id, v.sku, v.barcode].filter(Boolean).map(String);
           let vs = null;
           if (selectedStoreId) {
-            vs = variantStocksList.find(s => String(s.variantId) === String(v.id) && s.storeId && String(s.storeId) === String(selectedStoreId));
+            vs = variantStocksList.find(s => candidateVIds.includes(String(s.variantId)) && s.storeId && String(s.storeId) === String(selectedStoreId));
           } else {
-            vs = variantStocksList.find(s => String(s.variantId) === String(v.id));
+            vs = variantStocksList.find(s => candidateVIds.includes(String(s.variantId)));
           }
           const vStock = vs ? (Number(vs.quantity) || 0) : 0;
 

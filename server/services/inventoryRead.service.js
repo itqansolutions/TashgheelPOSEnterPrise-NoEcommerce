@@ -115,8 +115,18 @@ async function getStoreInventory(tenantId, storeId, options = {}, txPrisma = nul
 
         if (hasVariants) {
             for (const v of prod.variants) {
-                const key = `${prod.id}_${v.id}`;
-                const vs = stockMap.get(key);
+                const candidateKeys = [v.id, v._id, v.sku, v.barcode].filter(Boolean).map(String);
+                let vs = null;
+                let matchedKey = null;
+                for (const ck of candidateKeys) {
+                    const k = `${prod.id}_${ck}`;
+                    if (stockMap.has(k)) {
+                        vs = stockMap.get(k);
+                        matchedKey = k;
+                        break;
+                    }
+                }
+
                 const quantity = vs ? Number(vs.quantity) : 0;
                 const minStock = vs ? Number(vs.minStock) : Number(prod.minStock || 0);
                 const unitCost = (v.cost !== undefined && v.cost !== null && !isNaN(v.cost))
@@ -134,21 +144,24 @@ async function getStoreInventory(tenantId, storeId, options = {}, txPrisma = nul
                     continue;
                 }
 
+                const variantIdCanonical = String(v.id || v._id || v.sku || v.barcode || '');
+                const variantLabel = v.name || (v.attributes ? Object.values(v.attributes).join(' / ') : null) || v.sku || variantIdCanonical;
+
                 items.push({
                     productId: prod.id,
                     productName: prod.name,
                     productNameEn: prod.nameEn || prod.name,
                     category: prod.category || 'Uncategorized',
                     hasVariants: true,
-                    variantId: v.id,
-                    variantName: v.name || v.id,
-                    barcode: v.barcode || prod.barcode || '',
+                    variantId: variantIdCanonical,
+                    variantName: variantLabel,
+                    barcode: v.barcode || v.sku || prod.barcode || '',
                     price: Number(v.price || prod.price || 0),
                     cost: unitCost,
                     quantity,
                     minStock,
                     status,
-                    lastMovement: movementMap.get(key) || null,
+                    lastMovement: (matchedKey && movementMap.get(matchedKey)) || movementMap.get(`${prod.id}_${v.id}`) || null,
                     updatedAt: vs?.updatedAt || null
                 });
             }
@@ -215,25 +228,42 @@ async function getAvailableQuantity(tenantId, storeId, productId, variantId = nu
 
     const db = txPrisma || prisma;
 
-    const [store, product, variantStock] = await Promise.all([
+    const [store, product] = await Promise.all([
         db.store.findFirst({
             where: { id: String(storeId), tenantId },
             select: { isReconciling: true, activeReconciliationId: true }
         }),
         db.product.findFirst({
             where: { id: String(productId), tenantId },
-            select: { trackStock: true }
-        }),
-        db.variantStock.findFirst({
-            where: {
-                tenantId,
-                storeId: String(storeId),
-                productId: String(productId),
-                variantId: variantId ? String(variantId) : null
-            },
-            select: { quantity: true, minStock: true }
+            select: { trackStock: true, hasVariants: true, variants: true }
         })
     ]);
+
+    let candidateIds = null;
+    if (variantId) {
+        candidateIds = [String(variantId)];
+        if (product?.hasVariants && Array.isArray(product.variants)) {
+            const matched = product.variants.find(v =>
+                String(v.id) === String(variantId) ||
+                String(v._id) === String(variantId) ||
+                v.sku === String(variantId) ||
+                v.barcode === String(variantId)
+            );
+            if (matched) {
+                candidateIds = [matched.id, matched._id, matched.sku, matched.barcode, variantId].filter(Boolean).map(String);
+            }
+        }
+    }
+
+    const variantStock = await db.variantStock.findFirst({
+        where: {
+            tenantId,
+            storeId: String(storeId),
+            productId: String(productId),
+            variantId: candidateIds ? { in: candidateIds } : null
+        },
+        select: { quantity: true, minStock: true }
+    });
 
     const isTracked = product?.trackStock !== false;
     const storeLocked = Boolean(store?.isReconciling);
@@ -388,20 +418,30 @@ async function getProductStoreMatrix(tenantId, productId, txPrisma = null) {
         for (const v of product.variants) {
             const storeStocks = {};
             let variantTotal = 0;
+            const candidateKeys = [v.id, v._id, v.sku, v.barcode].filter(Boolean).map(String);
 
             for (const s of stores) {
-                const key = `${v.id}_${s.id}`;
-                const qty = stockMap.get(key) || 0;
+                let qty = 0;
+                for (const ck of candidateKeys) {
+                    const k = `${ck}_${s.id}`;
+                    if (stockMap.has(k)) {
+                        qty = stockMap.get(k);
+                        break;
+                    }
+                }
                 storeStocks[s.id] = qty;
                 variantTotal += qty;
                 storeTotals[s.id] += qty;
                 grandTotal += qty;
             }
 
+            const variantIdCanonical = String(v.id || v._id || v.sku || v.barcode || '');
+            const variantLabel = v.name || (v.attributes ? Object.values(v.attributes).join(' / ') : null) || v.sku || variantIdCanonical;
+
             rows.push({
-                variantId: v.id,
-                label: v.name || v.id,
-                barcode: v.barcode || product.barcode || '',
+                variantId: variantIdCanonical,
+                label: variantLabel,
+                barcode: v.barcode || v.sku || product.barcode || '',
                 cost: v.cost !== undefined ? Number(v.cost) : Number(product.cost || 0),
                 price: v.price !== undefined ? Number(v.price) : Number(product.price || 0),
                 storeStocks,
