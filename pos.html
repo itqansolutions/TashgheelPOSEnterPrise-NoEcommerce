@@ -162,8 +162,11 @@
     <main class="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#f4f7f9] relative">
       <header class="px-8 py-5 flex justify-between items-center z-10 sticky top-0">
         <div class="relative w-96">
-          <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-          <input type="text" id="productSearch" placeholder="Search..." class="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 shadow-sm focus:ring-2 focus:ring-brand-blue outline-none transition-all text-sm">
+          <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+          <input type="search" id="productSearch" name="catalog_search_filter_pos" placeholder="Search products, code, barcode..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" readonly onfocus="this.removeAttribute('readonly');" onblur="this.setAttribute('readonly', 'readonly');" class="w-full pl-11 pr-10 py-3 rounded-xl border border-gray-200 shadow-sm focus:ring-2 focus:ring-brand-blue outline-none transition-all text-sm bg-white">
+          <button type="button" id="clearSearchBtn" onclick="clearProductSearch()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden p-1 focus:outline-none" title="Clear search">
+            <i class="fas fa-times-circle text-sm"></i>
+          </button>
         </div>
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-2">
@@ -184,9 +187,19 @@
       <div id="readOnlyBanner" style="display:none;" class="bg-red-500 text-white p-2 text-center font-bold text-sm">
         ⚠️ Read-Only Mode: Shift opened by <span id="readOnlyUser"></span>
       </div>
-      <div id="posReconciliationBanner" style="display:none;" class="bg-amber-600 text-white p-3 text-center font-bold text-sm flex items-center justify-center gap-2 shadow-md">
-        <span>🔒</span>
-        <span id="posReconciliationBannerText">هذا الفرع مغلق حالياً لإجراء الجرد الافتتاحي (Opening Reconciliation). تم تعطيل عمليات البيع لحين اعتماد الجرد.</span>
+      <div id="posReconciliationBanner" style="display:none; background: linear-gradient(135deg, #b45309, #d97706); color: #ffffff;" class="mx-8 mb-4 p-3.5 rounded-2xl shadow-lg flex flex-wrap items-center justify-between gap-3 text-sm font-semibold z-10">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">🔒</span>
+          <span id="posReconciliationBannerText">هذا الفرع مغلق حالياً لإجراء الجرد الافتتاحي (Opening Reconciliation). تم تعطيل عمليات البيع لحين اعتماد الجرد.</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <a href="reconciliation.html" class="px-3.5 py-1.5 bg-white text-amber-900 rounded-xl text-xs font-bold hover:bg-amber-50 shadow-sm transition-all flex items-center gap-1.5">
+            <i class="fas fa-clipboard-check"></i> <span data-i18n="manage_reconciliation">إدارة واعتماد الجرد</span>
+          </a>
+          <button id="posQuickCancelReconciliationBtn" onclick="quickUnlockReconciliationStore()" class="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5">
+            <i class="fas fa-unlock"></i> <span data-i18n="unlock_store_now">إلغاء الجرد وفك القفل فوراً</span>
+          </button>
+        </div>
       </div>
 
       <section class="flex-1 min-h-0 px-8 pb-8 flex flex-col overflow-hidden">
@@ -223,7 +236,7 @@
 
               <!-- Products Grid (Center) -->
               <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-6">
-                <div class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));" id="productGrid">
+                <div class="grid gap-3.5" style="grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));" id="productGrid">
                   <div class="col-span-full text-center py-12 text-gray-400 font-medium">
                     <p id="loadingText" class="animate-pulse">Loading products...</p>
                   </div>

@@ -255,6 +255,59 @@ function checkReconciliationLock(storeId) {
 }
 window.checkReconciliationLock = checkReconciliationLock;
 
+async function quickUnlockReconciliationStore() {
+  const targetStoreId = document.getElementById('pos-warehouse-selector')?.value || localStorage.getItem('pos_selected_store');
+  const store = (window.posAllowedStores || []).find(s => String(s.id) === String(targetStoreId));
+  const storeName = store ? store.name : "هذا الفرع";
+
+  const lang = localStorage.getItem('pos_language') || 'en';
+  const confirmMsg = lang === 'ar'
+    ? `⚠️ هل أنت متأكد من رغبتك في إلغاء جلسة الجرد وفك قفل (${storeName}) فوراً؟\nسيتم السماح بحركات البيع دون أي تعديل في المخزون.`
+    : `⚠️ Are you sure you want to cancel the reconciliation session and unlock (${storeName}) immediately?\nTransactions will be allowed without stock modification.`;
+
+  if (!confirm(confirmMsg)) return;
+
+  const token = localStorage.getItem('token');
+  try {
+    const res = await fetch(`${API_URL}/reconciliation/sessions?storeId=${encodeURIComponent(targetStoreId)}`, {
+      headers: { 'x-auth-token': token }
+    });
+    if (!res.ok) throw new Error("Failed to fetch sessions");
+    const sessions = await res.json();
+    const active = Array.isArray(sessions) ? sessions.find(s => 
+      s.status === 'IN_PROGRESS' || s.status === 'READY_FOR_REVIEW' || s.status === 'DRAFT' || s.status === 'SUBMITTED'
+    ) : null;
+
+    if (!active) {
+      alert(lang === 'ar' ? 'لم يتم العثور على جلسة جرد نشطة لهذا المخزن.' : 'No active reconciliation session found for this store.');
+      location.reload();
+      return;
+    }
+
+    const cancelRes = await fetch(`${API_URL}/reconciliation/sessions/${active.id}/cancel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-auth-token': token },
+      body: JSON.stringify({ reason: "Unshelved / Cancelled directly from POS" })
+    });
+
+    if (cancelRes.ok) {
+      alert(lang === 'ar' ? `✅ تم إلغاء جلسة الجرد وفك قفل (${storeName}) بنجاح!` : `✅ Reconciliation session cancelled and (${storeName}) unlocked successfully!`);
+      if (store) store.isReconciling = false;
+      const banner = document.getElementById('posReconciliationBanner');
+      if (banner) banner.style.display = 'none';
+      checkReconciliationLock(targetStoreId);
+      await loadProducts();
+    } else {
+      const err = await cancelRes.json();
+      alert((lang === 'ar' ? 'فشل فك القفل: ' : 'Failed to unlock: ') + (err.msg || 'Error'));
+    }
+  } catch (err) {
+    console.error("quickUnlockReconciliationStore error:", err);
+    alert(lang === 'ar' ? 'حدث خطأ أثناء فك قفل الفرع' : 'An error occurred while unlocking the branch');
+  }
+}
+window.quickUnlockReconciliationStore = quickUnlockReconciliationStore;
+
 function resumeShift() {
   document.getElementById('resumeShiftModal').style.display = 'none';
   sessionStorage.setItem('shiftResumed', 'true');
@@ -600,11 +653,51 @@ async function checkTrialStatus() {
   }
 }
 
-// يربط السيرش مرة واحدة فقط
+function clearProductSearch() {
+  const el = document.getElementById("productSearch");
+  const clearBtn = document.getElementById("clearSearchBtn");
+  if (el) {
+    el.value = "";
+    if (clearBtn) clearBtn.classList.add("hidden");
+    handleSearch();
+    el.focus();
+  }
+}
+window.clearProductSearch = clearProductSearch;
+
+// يربط السيرش مرة واحدة فقط مع حماية كاملة ضد الملء التلقائي (Autofill Defense)
 function bindSearchOnce() {
   const el = document.getElementById("productSearch");
+  const clearBtn = document.getElementById("clearSearchBtn");
   if (el && !el.dataset.bound) {
-    el.addEventListener("input", handleSearch);
+    // إزالة أي ملء تلقائي لاسم المستخدم (مثل admin) يضعه المتصفح بالخطأ
+    const cleanIfAutofilled = () => {
+      const val = (el.value || "").trim().toLowerCase();
+      if (val === 'admin' || val === 'administrator' || val === 'user') {
+        el.value = '';
+        if (clearBtn) clearBtn.classList.add('hidden');
+        handleSearch();
+      }
+    };
+    cleanIfAutofilled();
+    setTimeout(cleanIfAutofilled, 150);
+    setTimeout(cleanIfAutofilled, 600);
+
+    const onSearchChange = () => {
+      if (clearBtn) {
+        if (el.value.trim().length > 0) {
+          clearBtn.classList.remove("hidden");
+        } else {
+          clearBtn.classList.add("hidden");
+        }
+      }
+      handleSearch();
+    };
+
+    el.addEventListener("input", onSearchChange);
+    el.addEventListener("search", onSearchChange); // handles native clear icon in type="search"
+    el.addEventListener("focus", cleanIfAutofilled);
+
     el.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
@@ -613,9 +706,12 @@ function bindSearchOnce() {
           const handled = searchProductByBarcode(code);
           if (handled) {
             el.value = "";
+            if (clearBtn) clearBtn.classList.add("hidden");
             handleSearch();
           }
         }
+      } else if (e.key === "Escape") {
+        clearProductSearch();
       }
     });
     el.dataset.bound = "1";
@@ -639,6 +735,37 @@ function ensureSearchClickable() {
     // ضمان الفوكس أول ما يفتح في كل البيئات
     el.addEventListener("mousedown", () => el.focus(), { once: true });
   }
+}
+
+// أيقونات وتصميم عصري للأصناف بدون صور بدلاً من المربعات الرمادية الباهتة
+function getProductFallbackVisual(product) {
+  const cat = (product.category || '').toLowerCase();
+  const name = (product.name || '').toLowerCase();
+
+  let icon = 'fa-box-open';
+  let gradient = 'from-slate-50 to-indigo-50/50 text-indigo-600';
+
+  if (cat.includes('drink') || cat.includes('beverage') || cat.includes('مشروب') || name.includes('pepsi') || name.includes('cola') || name.includes('juice') || name.includes('ماء') || name.includes('عصير')) {
+    icon = 'fa-mug-hot';
+    gradient = 'from-blue-50 to-indigo-100/60 text-blue-600';
+  } else if (cat.includes('food') || cat.includes('اطعمة') || cat.includes('طعام') || cat.includes('وجب') || name.includes('burger') || name.includes('pizza') || name.includes('ساندوتش')) {
+    icon = 'fa-utensils';
+    gradient = 'from-amber-50 to-orange-100/60 text-amber-600';
+  } else if (cat.includes('cloth') || cat.includes('ملابس') || cat.includes('fashion') || cat.includes('ازياء')) {
+    icon = 'fa-tshirt';
+    gradient = 'from-purple-50 to-pink-100/60 text-purple-600';
+  } else if (cat.includes('elect') || cat.includes('إلكترون') || cat.includes('جهاز') || cat.includes('mobile') || cat.includes('phone')) {
+    icon = 'fa-mobile-alt';
+    gradient = 'from-emerald-50 to-teal-100/60 text-emerald-600';
+  }
+
+  return `
+    <div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br ${gradient} p-2 select-none">
+      <div class="w-11 h-11 rounded-2xl bg-white/90 shadow-sm flex items-center justify-center border border-white/60">
+        <i class="fas ${icon} text-lg"></i>
+      </div>
+    </div>
+  `;
 }
 
 // ===================== LOAD PRODUCTS =====================
@@ -679,9 +806,10 @@ function renderProducts() {
   
   const lang = localStorage.getItem('pos_language') || 'en';
   const t = (en, ar) => (lang === 'ar' ? ar : en);
+  const currencySymbol = (lang === 'ar' ? 'ج.م' : 'EGP');
 
   if (filteredProducts.length === 0) {
-    grid.innerHTML = `<p style="text-align:center; color:#666;">${t('No products found', 'لا توجد منتجات')}</p>`;
+    grid.innerHTML = `<div class="col-span-full py-12 text-center text-gray-400 font-medium"><i class="fas fa-search text-3xl mb-2 block opacity-40"></i>${t('No products found', 'لا توجد أصناف مطابقة للبحث')}</div>`;
     return;
   }
 
@@ -711,46 +839,64 @@ function renderProducts() {
       currentStock = vs ? (Number(vs.quantity) || 0) : 0;
     }
 
-    let priceDisplay = `$${product.price.toFixed(2)}`;
+    let priceDisplay = `${product.price.toFixed(2)} ${currencySymbol}`;
     if (hasVariants) {
       const prices = product.variants.map(v => (v.price !== undefined && v.price !== null && !isNaN(parseFloat(v.price))) ? parseFloat(v.price) : product.price);
       const minP = Math.min(...prices);
       const maxP = Math.max(...prices);
-      priceDisplay = minP === maxP ? `$${minP.toFixed(2)}` : `$${minP.toFixed(2)} - $${maxP.toFixed(2)}`;
+      priceDisplay = minP === maxP ? `${minP.toFixed(2)} ${currencySymbol}` : `${minP.toFixed(2)} - ${maxP.toFixed(2)} ${currencySymbol}`;
     }
+
+    const isOutOfStock = (product.trackStock !== false && currentStock <= 0);
 
     const div = document.createElement("div");
     div.className = "product-card";
-    if (product.trackStock !== false && currentStock <= 0) div.classList.add("out-of-stock");
+    if (isOutOfStock) div.classList.add("out-of-stock");
     
-    // Clicking anywhere on the card adds to cart
+    // Clicking anywhere on the card triggers add to cart or variant selector
     div.onclick = () => addToCart({ ...product, currentStock });
     
-    const stockDisplay = (product.trackStock === false) ? '<span style="font-weight: bold; color:#10b981;">∞</span>' : `${t('Stock:', 'المخزون:')} ${currentStock}`;
-    
-    const imageHtml = product.imageUrl 
-      ? `<img src="${product.imageUrl}" alt="${product.name}">`
-      : `<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 text-slate-400 text-3xl"><i class="fas fa-box text-xl opacity-40"></i></div>`;
+    let stockBadgeHtml = '';
+    let stockClass = 'in-stock';
+    if (product.trackStock === false) {
+      stockBadgeHtml = `∞ ${t('In stock', 'متوفر')}`;
+    } else if (currentStock <= 0) {
+      stockBadgeHtml = `🔴 ${t('Out of stock', 'نفذ')}`;
+      stockClass = 'out-stock';
+    } else if (currentStock <= 10) {
+      stockBadgeHtml = `🟡 ${currentStock} ${t('left', 'متبقي')}`;
+      stockClass = 'low-stock';
+    } else {
+      stockBadgeHtml = `🟢 ${currentStock} ${t('in stock', 'متوفر')}`;
+    }
 
-    const variantBadge = hasVariants 
-      ? `<span class="variant-pill text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 ml-1 inline-block">${product.variants.length} ${t('options', 'خيارات')}</span>`
+    const imageHtml = product.imageUrl 
+      ? `<img src="${product.imageUrl}" alt="${product.name}" onerror="this.style.display='none'; this.parentElement.innerHTML=getProductFallbackVisual({name: '${(product.name||'').replace(/'/g, "\\'")}', category: '${(product.category||'').replace(/'/g, "\\"')}'});">`
+      : getProductFallbackVisual(product);
+
+    const variantPill = hasVariants 
+      ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200/60 shadow-xs"><i class="fas fa-layer-group text-[8px]"></i> ${product.variants.length} ${t('options', 'خيارات')}</span>`
       : '';
 
     div.innerHTML = `
       <div class="image-wrapper">
         ${imageHtml}
+        ${hasVariants ? `<div class="absolute top-1.5 right-1.5 z-10">${variantPill}</div>` : ''}
       </div>
       <div class="info">
-        <div class="flex items-center justify-between">
+        <div class="category-row">
           <span class="category">${product.category || (lang === 'ar' ? 'عام' : 'General')}</span>
-          ${variantBadge}
         </div>
-        <h4 class="title">${product.name}</h4>
-        <div class="flex justify-between items-center mt-auto">
-          <p class="price">${priceDisplay}</p>
-          <span class="stock text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100">${stockDisplay}</span>
+        <h4 class="title" title="${product.name}">${product.name}</h4>
+        <div class="bottom-row">
+          <div>
+            <p class="price">${priceDisplay}</p>
+            <span class="stock-badge ${stockClass}">${stockBadgeHtml}</span>
+          </div>
+          <button class="add-action-btn" title="${hasVariants ? t('Select Option', 'اختر خيار') : t('Add to Cart', 'إضافة للسلة')}">
+            <i class="fas ${hasVariants ? 'fa-sliders-h' : 'fa-plus'}"></i>
+          </button>
         </div>
-        <button class="add-btn mt-2">${hasVariants ? t('Select Option', 'اختر خيار') : t('Add to Cart', 'إضافة للسلة')}</button>
       </div>
     `;
     grid.appendChild(div);

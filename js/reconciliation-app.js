@@ -1,4 +1,4 @@
-﻿// js/reconciliation-app.js
+// js/reconciliation-app.js
 // Opening Reconciliation UI Controller
 // Communicates with /api/reconciliation endpoints
 
@@ -83,7 +83,9 @@ async function loadSessionForStore(storeId) {
         }
 
         const sessions = await res.json();
-        const activeSessionMeta = sessions.find(s => s.status === 'DRAFT' || s.status === 'SUBMITTED');
+        const activeSessionMeta = Array.isArray(sessions) ? sessions.find(s => 
+            s.status === 'IN_PROGRESS' || s.status === 'READY_FOR_REVIEW' || s.status === 'DRAFT' || s.status === 'SUBMITTED'
+        ) : null;
 
         if (!activeSessionMeta) {
             renderNoSessionState();
@@ -100,7 +102,8 @@ async function loadSessionForStore(storeId) {
             return;
         }
 
-        currentSession = await detailRes.json();
+        const data = await detailRes.json();
+        currentSession = data.session || data;
         sessionItems = Array.isArray(currentSession.items) ? currentSession.items : [];
         renderActiveSessionState();
     } catch (err) {
@@ -136,11 +139,14 @@ function renderActiveSessionState() {
     const status = currentSession.status;
 
     let badgeClass = "bg-amber-100 text-amber-800";
-    let statusText = "مسودة (DRAFT)";
+    let statusText = "قيد الإدخال (IN_PROGRESS)";
 
-    if (status === 'SUBMITTED') {
+    if (status === 'READY_FOR_REVIEW' || status === 'SUBMITTED') {
         badgeClass = "bg-blue-100 text-blue-800";
-        statusText = "قيد المراجعة والاعتماد (SUBMITTED)";
+        statusText = "جاهز للمراجعة والاعتماد (READY_FOR_REVIEW)";
+    } else if (status === 'APPROVING') {
+        badgeClass = "bg-purple-100 text-purple-800";
+        statusText = "جاري ترحيل القيود (APPROVING)...";
     } else if (status === 'APPROVED') {
         badgeClass = "bg-emerald-100 text-emerald-800";
         statusText = "معتمد ومطبق (APPROVED)";
@@ -155,29 +161,41 @@ function renderActiveSessionState() {
     document.getElementById("startSessionBtn").classList.add("hidden");
     document.getElementById("cancelSessionBtn").classList.remove("hidden");
 
-    const isDraft = status === 'DRAFT';
-    const isSubmitted = status === 'SUBMITTED';
+    let isAdmin = false;
+    try {
+        const user = JSON.parse(localStorage.getItem('currentUser'));
+        isAdmin = user && user.role === 'admin';
+    } catch (e) {}
+
+    const isDraft = status === 'IN_PROGRESS' || status === 'DRAFT';
+    const isSubmitted = status === 'READY_FOR_REVIEW' || status === 'SUBMITTED';
 
     if (isDraft) {
         document.getElementById("saveDraftBtn").classList.remove("hidden");
         document.getElementById("submitReviewBtn").classList.remove("hidden");
-        document.getElementById("approveBtn").classList.add("hidden");
+        // For admin, allow direct approval from IN_PROGRESS / DRAFT!
+        if (isAdmin) {
+            document.getElementById("approveBtn").classList.remove("hidden");
+            document.getElementById("approveBtn").innerHTML = '<i class="fas fa-check-circle"></i> <span>اعتماد وتطبيق القيود وفك القفل</span>';
+        } else {
+            document.getElementById("approveBtn").classList.add("hidden");
+        }
     } else if (isSubmitted) {
         document.getElementById("saveDraftBtn").classList.add("hidden");
         document.getElementById("submitReviewBtn").classList.add("hidden");
         
-        // Show approve button if user is admin
-        let isAdmin = false;
-        try {
-            const user = JSON.parse(localStorage.getItem('currentUser'));
-            isAdmin = user && user.role === 'admin';
-        } catch (e) {}
-
         if (isAdmin) {
             document.getElementById("approveBtn").classList.remove("hidden");
+            document.getElementById("approveBtn").innerHTML = '<i class="fas fa-check-circle"></i> <span>اعتماد وتطبيق القيود وفك القفل</span>';
         } else {
             document.getElementById("approveBtn").classList.add("hidden");
         }
+    } else {
+        // APPROVING or APPROVED
+        document.getElementById("saveDraftBtn").classList.add("hidden");
+        document.getElementById("submitReviewBtn").classList.add("hidden");
+        document.getElementById("approveBtn").classList.add("hidden");
+        document.getElementById("cancelSessionBtn").classList.add("hidden");
     }
 
     document.getElementById("sessionStatsCard").classList.remove("hidden");
@@ -462,6 +480,11 @@ async function submitSession() {
 async function approveSession() {
     if (!currentSession) return;
     if (!confirm("⚠️ تنبيه: اعتماد الجلسة سيقوم بتطبيق فروقات الجرد وتحديث أرصدة المخزن وفك قفل الفرع. هل تريد المتابعة؟")) return;
+
+    if (currentSession.status === 'IN_PROGRESS' || currentSession.status === 'DRAFT') {
+        const saved = await saveDraftItems(true);
+        if (!saved) return;
+    }
 
     const token = localStorage.getItem('token');
     try {

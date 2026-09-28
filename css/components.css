@@ -440,84 +440,85 @@ input[type="number"]:hover::-webkit-outer-spin-button { opacity: 1; }
   font-size: 0.9rem;
 }
 
-/* ── Premium Product Card (POS #productGrid) ─────────────── */
+/* ── Modern Product Card (POS #productGrid) ─────────────── */
 #productGrid .product-card .image-wrapper {
-  background: rgba(240, 244, 255, 0.7) !important;
+  background: #f1f5f9 !important;
   border-radius: 12px !important;
-  aspect-ratio: 1 / 1 !important;
+  height: 100px !important;
+  aspect-ratio: auto !important;
   width: 100% !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   overflow: hidden !important;
-  margin-bottom: 12px !important;
-  border: 1px solid rgba(255,255,255,0.65) !important;
+  margin-bottom: 8px !important;
+  border: none !important;
+  position: relative !important;
 }
 #productGrid .product-card .image-wrapper img {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
-  transition: transform 0.35s ease !important;
+  transition: transform 0.3s ease !important;
 }
 #productGrid .product-card:hover .image-wrapper img {
-  transform: scale(1.06) !important;
+  transform: scale(1.08) !important;
 }
 #productGrid .product-card .info {
   display: flex !important;
   flex-direction: column !important;
   flex: 1 !important;
-  text-align: left !important;
+  text-align: inherit !important;
 }
 #productGrid .product-card .category {
   font-size: 0.65rem !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.5px !important;
-  color: #94a3b8 !important;
+  letter-spacing: 0.3px !important;
+  color: #64748b !important;
   font-weight: 700 !important;
-  margin-bottom: 4px !important;
+  margin-bottom: 2px !important;
 }
 #productGrid .product-card .title {
   font-size: 0.85rem !important;
   font-weight: 700 !important;
-  color: #0a192f !important;
+  color: #0f172a !important;
   line-height: 1.25 !important;
   margin-bottom: 6px !important;
   display: -webkit-box !important;
   -webkit-line-clamp: 2 !important;
   -webkit-box-orient: vertical !important;
   overflow: hidden !important;
-  min-height: 34px !important;
+  min-height: 32px !important;
 }
 #productGrid .product-card .price {
-  font-size: 1rem !important;
+  font-size: 0.95rem !important;
   font-weight: 800 !important;
-  color: #0A192F !important;
+  color: #1d4ed8 !important;
   margin-top: auto !important;
-  margin-bottom: 10px !important;
+  margin-bottom: 0 !important;
 }
 #productGrid .product-card .stock {
   font-size: 0.7rem !important;
   color: #64748b !important;
-  margin-bottom: 8px !important;
+  margin-bottom: 0 !important;
 }
-#productGrid .product-card .add-btn {
-  width: 100% !important;
-  background: rgba(255,255,255,0.7) !important;
-  border: 1px solid rgba(255,255,255,0.7) !important;
-  color: #1e293b !important;
-  font-size: 0.75rem !important;
-  font-weight: 700 !important;
-  padding: 8px 12px !important;
-  border-radius: 10px !important;
-  transition: all 0.2s !important;
-  text-align: center !important;
-  backdrop-filter: blur(8px);
-}
-#productGrid .product-card:hover .add-btn {
-  background: linear-gradient(135deg, #0A192F, #1B355A) !important;
-  border-color: transparent !important;
+#productGrid .product-card .quick-add-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 8px !important;
+  background: #2563eb !important;
   color: #ffffff !important;
-  box-shadow: 0 4px 12px rgba(10,25,47,0.2);
+  font-size: 0.75rem !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25) !important;
+  border: none !important;
+}
+#productGrid .product-card:hover .quick-add-btn {
+  background: #1d4ed8 !important;
+  transform: scale(1.1) !important;
 }
 
 /* ── Reports page stat cards ─────────────────────────────── */

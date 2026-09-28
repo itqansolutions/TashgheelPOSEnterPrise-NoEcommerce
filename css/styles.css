@@ -1174,56 +1174,66 @@ body.rtl .cart-item { flex-direction: row-reverse; }
   overflow-y: auto;
 }
 
-.product-card {
-  background: var(--glass-bg-heavy);
-  backdrop-filter: var(--glass-blur-sm);
-  -webkit-backdrop-filter: var(--glass-blur-sm);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--r-lg);
-  padding: 14px;
-  cursor: pointer;
-  transition: all var(--dur-md) var(--ease-spring);
-  text-align: center;
-  box-shadow: var(--shadow-glass);
+/* ── Suppress browser autofill background on inputs ──── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
-.product-card:hover {
-  border-color: rgba(37, 99, 235, 0.25);
-  box-shadow: 0 12px 32px rgba(10, 25, 47, 0.1), inset 0 1px 0 rgba(255,255,255,0.8);
-  transform: translateY(-3px);
-}
-
-.product-card.out-of-stock { opacity: 0.45; cursor: not-allowed; }
-
-/* ── POS Product Grid in #productGrid ─────────────────── */
+/* ── Modern SaaS POS Product Grid & Cards ─────────────────── */
 #productGrid {
   display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)) !important;
-  gap: 16px !important;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+  gap: 14px !important;
+  padding: 2px !important;
 }
 
-#productGrid .product-card,
-#productGrid .bg-white {
+#productGrid .product-card {
   display: flex !important;
   flex-direction: column !important;
-  background: var(--glass-bg-heavy) !important;
-  backdrop-filter: var(--glass-blur-sm) !important;
-  -webkit-backdrop-filter: var(--glass-blur-sm) !important;
-  border: 1px solid var(--glass-border) !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
   border-radius: 16px !important;
-  padding: 12px !important;
-  transition: all 0.25s var(--ease-spring) !important;
+  padding: 10px !important;
   cursor: pointer !important;
   position: relative !important;
-  min-height: 250px !important;
-  box-shadow: var(--shadow-glass) !important;
-  overflow: hidden;
+  min-height: auto !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04) !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease !important;
+  overflow: hidden !important;
+  user-select: none !important;
 }
-#productGrid .product-card:hover,
-#productGrid .bg-white:hover {
-  border-color: rgba(37, 99, 235, 0.25) !important;
-  box-shadow: 0 12px 32px rgba(10, 25, 47, 0.10), inset 0 1px 0 rgba(255,255,255,0.8) !important;
-  transform: translateY(-4px) !important;
+
+#productGrid .product-card:hover {
+  transform: translateY(-3px) !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 10px 25px -4px rgba(37, 99, 235, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+#productGrid .product-card:active {
+  transform: scale(0.97) !important;
+}
+
+#productGrid .product-card.out-of-stock {
+  opacity: 0.55 !important;
+  filter: grayscale(0.6);
+  cursor: not-allowed !important;
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+.product-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 
 /* ══════════════════════════════════════════════════════════════

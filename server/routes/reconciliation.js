@@ -608,8 +608,8 @@ router.post('/sessions/:id/approve', auth, async (req, res) => {
                 throw forbidden;
             }
 
-            if (session.status !== 'READY_FOR_REVIEW') {
-                const conflict = new Error(`لا يمكن اعتماد الجلسة في حالتها الحالية (${session.status}). يجب أن تكون في حالة جاهزة للمراجعة (READY_FOR_REVIEW).`);
+            if (session.status !== 'READY_FOR_REVIEW' && session.status !== 'IN_PROGRESS') {
+                const conflict = new Error(`لا يمكن اعتماد الجلسة في حالتها الحالية (${session.status}). يجب أن تكون الجلسة قيد الإدخال أو جاهزة للمراجعة.`);
                 conflict.statusCode = 409;
                 throw conflict;
             }
